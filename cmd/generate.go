@@ -26,13 +26,14 @@ var dupes = map[string]uint32{} // duplicates (collected during walk)
 
 // generateCmd represents the generate command
 var generateCmd = &cobra.Command{
-	Use:   "generate",
-	Short: "Generate a sha-manager signature (.ssf) file",
-	Long: `Generate a sha-manager (.ssf) file from specified directory (or current directory if none specified), 
+	Use:   "generate [file.ssf]",
+	Short: "Generate a sha-manager signature format (.ssf) file",
+	Long: `Generate a sha-manager format (.ssf) file from specified directory (or current directory if none specified), 
 writing the output to a named file (or stdout if none given)`,
 	Aliases: []string{"gen"},
+	Args:    cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		gen()
+		gen(args)
 	},
 }
 
@@ -40,7 +41,7 @@ func init() {
 	rootCmd.AddCommand(generateCmd)
 
 	generateCmd.Flags().StringVarP(&cli_path, "path", "p", "", "Path to directory to scan (default is current directory)")
-	generateCmd.Flags().BoolVarP(&cli_anon, "anonymous", "a", false, "Whether to mask the SSF output (to include only hases)")
+	generateCmd.Flags().BoolVarP(&cli_anon, "anonymous", "a", false, "Whether to mask the SSF output (to include only hashes)")
 }
 
 // ----------------------- Generate function below this line -----------------------
@@ -128,13 +129,20 @@ func WalkTree(startpath string) (int64, error) {
 	return total, nil
 }
 
-func gen() {
+func gen(args []string) {
 
-	// Run the generator
+	// Get the encoding path
 	var startpath string = "."
 	if cli_path != "" {
 		startpath = cli_path // add validation here
 	}
+
+	// Check whether file specified and if so that it does not yet exist and that it ends ".ssf"
+	if len(args) == 1 {
+
+	}
+
+	// Call the tree walker
 	_, _ = WalkTree(startpath)
 
 	// This directory reader uses the new os.ReadDir (req 1.16)
