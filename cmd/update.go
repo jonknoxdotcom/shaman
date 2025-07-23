@@ -5,18 +5,17 @@ package cmd
 
 import (
 	"bufio"
-	"fmt"
 	"os"
-	"strconv"
 
 	"github.com/spf13/cobra"
 )
 
 // updateCmd represents the update command
 var updateCmd = &cobra.Command{
-	Use:   "update",
-	Short: "Update an existing SSF file",
-	Long:  `Update an existing SSF file`,
+	Use:     "update",
+	Short:   "Update an existing SSF file",
+	Long:    `Update an existing SSF file`,
+	Aliases: []string{"upd"},
 	Run: func(cmd *cobra.Command, args []string) {
 		upd(args)
 	},
@@ -72,31 +71,9 @@ func upd(args []string) {
 		abort(5, "Internal error #5: ")
 	}
 
-	// Optional totals statement
-	if cli_totals {
-		out := fmt.Sprintf("# %d files, %d bytes", tf, tb)
-		fmt.Fprintln(w, out)
-	}
-
-	// This directory reader uses the new os.ReadDir (req 1.16)
-	// https://benhoyt.com/writings/go-readdir/
-
-	// Optional duplicates statement
-	done_header := false
-	if cli_dupes {
-		for id, times := range dupes {
-			if times > 1 {
-				if !done_header {
-					fmt.Fprintln(w, "# ----------------- Duplicates -----------------")
-					done_header = true
-				}
-				fmt.Fprintln(w, "# "+id+" x"+strconv.Itoa(times))
-			}
-		}
-		if !done_header {
-			fmt.Fprintln(w, "# There were no duplicates")
-		}
-	}
+	// Optional totals and duplicates statements
+	state_totals(w, tf, tb)
+	state_dupes(w)
 
 	w.Flush()
 }
