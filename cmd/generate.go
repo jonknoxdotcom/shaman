@@ -21,6 +21,7 @@ import (
 
 // Local variables
 var cli_path string = ""        // Path to folder where scan will be performed [cobra]
+var cli_anon bool = false       // Path to folder where scan will be performed [cobra]
 var dupes = map[string]uint32{} // duplicates (collected during walk)
 
 // generateCmd represents the generate command
@@ -31,7 +32,7 @@ var generateCmd = &cobra.Command{
 writing the output to a named file (or stdout if none given)`,
 	Aliases: []string{"gen"},
 	Run: func(cmd *cobra.Command, args []string) {
-		gen(cli_path)
+		gen()
 	},
 }
 
@@ -39,7 +40,7 @@ func init() {
 	rootCmd.AddCommand(generateCmd)
 
 	generateCmd.Flags().StringVarP(&cli_path, "path", "p", "", "Path to directory to scan (default is current directory)")
-
+	//generateCmd.Flags().BoolP(&cli_anon, "anonymous", "a", false, "Whether to mask the SSF output (to include only hases)")
 }
 
 // ----------------------- Generate function below this line -----------------------
@@ -103,8 +104,12 @@ func WalkTree(startpath string) (int64, error) {
 			}
 			dupes[shab64] = dupes[shab64] + 1
 
-			fmt.Printf("%s%x%04x :%s", shab64, unixtime, size, name)
-			fmt.Println()
+			if cli_anon {
+				fmt.Println(shab64)
+			} else {
+				fmt.Printf("%s%x%04x :%s", shab64, unixtime, size, name)
+				fmt.Println()
+			}
 		}
 		if entry.IsDir() {
 			size, err := WalkTree(path.Join(startpath, entry.Name()))
@@ -123,21 +128,22 @@ func WalkTree(startpath string) (int64, error) {
 	return total, nil
 }
 
-func gen(startpath string) {
+func gen() {
 
 	// Run the generator
-	if startpath == "" {
-		startpath = "."
+	var startpath string = "."
+	if cli_path != "" {
+		startpath = cli_path // add validation here
 	}
 	_, _ = WalkTree(startpath)
 
 	// This directory reader uses the new os.ReadDir (req 1.16)
 	// https://benhoyt.com/writings/go-readdir/
 
-	for id, times := range dupes {
-		if times > 1 {
-			fmt.Println("# " + id)
-		}
-	}
+	// for id, times := range dupes {
+	// 	if times > 1 {
+	// 		fmt.Println("# " + id)
+	// 	}
+	// }
 
 }
