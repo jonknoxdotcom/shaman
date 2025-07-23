@@ -5,7 +5,7 @@ Tool for handing assets in a verifiable manner as part of a broader management s
 
 
 ## What it does
-* Maintains a signature file describing the list of files in a file tree based on hash (sha256)
+* Maintains a SHA-signature format file describing the list of files in a file tree based on hash (sha256)
 * Allows updates to the signature file at low computational cost
 * Allows comparisons of different trees via their signature files
 * Produces `bash`-style commands to delete duplicated data and directory structures
@@ -82,8 +82,8 @@ Every command name can be shortened to 3-letters (i.e. `gen`, `upd`, `big`, `dup
 
 ## Detailed command descriptions
 
-### 1. Generate - creating new JSF file
-Produces a JSF file (to STDOUT) for the current working directory.  Short form `gen`. Can use `--path` or `-p` to select a path other than cwd.  Optional filename for output.
+### 1. Generate - creating new SSF file
+Produces a SSF file (to STDOUT) for the current working directory.  Short form `gen`. Can use `--path` or `-p` to select a path other than cwd.  Optional filename for output.
 ```
 shaman generate
 shaman generate > myfiles.jsf
@@ -96,10 +96,10 @@ shaman gen -p /mnt/thumbdrive oldthumb.jsf
 ```
 shaman generate -p accounts/ -p receipts/ -p invoices/ fin.jsf
 ```
-~~In this case, the paths and collected, sorted, then indexed one by one.  So the single composite output JSF file `fin.jsf` will contain `accounts/...` then `invoices/...` then `receipts/...` records.~~
+~~In this case, the paths and collected, sorted, then indexed one by one.  So the single composite output SSF file `fin.jsf` will contain `accounts/...` then `invoices/...` then `receipts/...` records.~~
 
 
-### 2. Update an existing JSF file
+### 2. Update an existing SSF file
 
 ```
 shaman update file.jsf
@@ -126,7 +126,7 @@ shaman compare
 ### 10. 
 
 ## File format
-* JSF files are line-per-file collections of file descriptions
+* SSF files are line-per-file collections of file descriptions
 * Each line contain identifying information consisting of file hash, last modify time/date, and size
 * They are in strict ASCII (byte) order of the filename element.  This corresponds to locale specification `LC_COLLATE=C `.
 * The specification allow the insertion of extra metadata called annotations between the identification block and filename
@@ -147,7 +147,7 @@ shaman compare
 ### File size part: (4+ hex ch)
 
 * The file size is store in hex, with a minimum length of 4 hexadecimal chars.
-* For a simple JSF file, this tends to make all filenames for <64k files line up.
+* For a simple SSF file, this tends to make all filenames for <64k files line up.
 * This provides a visual cue for visual reading of the file to find large files. 
 
 ### Annotations

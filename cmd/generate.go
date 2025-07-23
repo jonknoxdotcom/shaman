@@ -40,7 +40,7 @@ func init() {
 	rootCmd.AddCommand(generateCmd)
 
 	generateCmd.Flags().StringVarP(&cli_path, "path", "p", "", "Path to directory to scan (default is current directory)")
-	//generateCmd.Flags().BoolP(&cli_anon, "anonymous", "a", false, "Whether to mask the SSF output (to include only hases)")
+	generateCmd.Flags().BoolVarP(&cli_anon, "anonymous", "a", false, "Whether to mask the SSF output (to include only hases)")
 }
 
 // ----------------------- Generate function below this line -----------------------

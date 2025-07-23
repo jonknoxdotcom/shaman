@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/spf13/cobra"
 )
@@ -16,17 +17,16 @@ var biggestCmd = &cobra.Command{
 	Long:    `Finds the top-10 largest files in an .ssf file`,
 	Aliases: []string{"big", "largest", "lar"},
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("biggest called")
+		fmt.Println("biggest called with " + strconv.FormatUint(uint64(cli_count), 10))
 	},
 }
 
-var bcount uint = 10
+var cli_count uint = 10
 
 func init() {
 	rootCmd.AddCommand(biggestCmd)
 
-	// *FIXME*
-	//generateCmd.Flags().Uint(&bcount, "count", "c", 10, "Specify number of files to show (default: 10)")
+	biggestCmd.Flags().UintVarP(&cli_count, "count", "c", 10, "Specify number of files to show (default: 10)")
 
 	// Here you will define your flags and configuration settings.
 
