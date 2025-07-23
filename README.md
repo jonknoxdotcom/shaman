@@ -1,2 +1,2 @@
-# jsf
-JSF sha256 file manager (using cobra)
+# shaman - SHA Manager
+Shaman sha256 file manager (using cobra)
