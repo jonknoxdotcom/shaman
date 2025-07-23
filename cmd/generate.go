@@ -4,23 +4,19 @@ Copyright © 2025 Jon Knox <jon@k2x.io>
 package cmd
 
 import (
-	"fmt"
-	"strconv"
-
 	"github.com/spf13/cobra"
 
 	"bufio"
-	//"encoding/json"
+	"crypto/sha256"
+	b64 "encoding/base64"
+	"fmt"
+	"io"
 	"os"
 	"path"
-
-	"crypto/sha256"
-	"io"
-
-	b64 "encoding/base64"
+	"strconv"
 )
 
-// Local variables
+// Local variables for GEN
 var cli_path string = ""     // Path to folder where scan will be performed [cobra]
 var cli_anon bool = false    // Anonymise the output (discard file, modified time and size)
 var cli_dupes bool = false   // Show duplicates as comments at end of run
@@ -102,7 +98,9 @@ func WalkTree(startpath string, w *bufio.Writer) (int64, int64, error) {
 				abort(3, "Internal error #3: "+name)
 			}
 			sha_b64 = sha_b64[0:43]
-			dupes[sha_b64] = dupes[sha_b64] + 1
+			if cli_dupes {
+				dupes[sha_b64] = dupes[sha_b64] + 1
+			}
 
 			outbuf := sha_b64
 			if !cli_anon {
@@ -148,10 +146,9 @@ func gen(args []string) {
 		defer file_out.Close()
 		//w = bufio.NewWriter(file_out)
 		w = bufio.NewWriterSize(file_out, 64*1024*1024) // whopping
-
 	} else {
 		// no file given, so use stdout
-		w = bufio.NewWriter(os.Stdout)
+		w = bufio.NewWriterSize(os.Stdout, 500) // more 'real time'
 	}
 
 	// Get the encoding path
