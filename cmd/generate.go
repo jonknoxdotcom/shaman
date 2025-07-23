@@ -7,21 +7,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"bufio"
-	"crypto/sha256"
 	b64 "encoding/base64"
 	"fmt"
-	"io"
 	"os"
 	"path"
 	"strconv"
 )
-
-// Local variables for GEN
-var cli_path string = ""     // Path to folder where scan will be performed [cobra]
-var cli_anon bool = false    // Anonymise the output (discard file, modified time and size)
-var cli_dupes bool = false   // Show duplicates as comments at end of run
-var cli_totals bool = false  // Show files/bytes total at end of run
-var dupes = map[string]int{} // duplicates (collected during walk)
 
 // generateCmd represents the generate command
 var generateCmd = &cobra.Command{
@@ -47,27 +38,6 @@ func init() {
 }
 
 // ----------------------- Generate function below this line -----------------------
-
-// Compute SHA256 for a given filename, returning byte array x 32
-func GetSha256OfFile(fn string) ([]byte, error) {
-	f, err := os.Open(fn)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return nil, err
-	}
-
-	return h.Sum(nil), nil
-}
-
-func abort(rc int, reason string) {
-	fmt.Println(reason)
-	os.Exit(rc)
-}
 
 func WalkTree(startpath string, w *bufio.Writer) (int64, int64, error) {
 	// uses the "new" (1.16) os.ReadPath functionality
@@ -125,19 +95,20 @@ func WalkTree(startpath string, w *bufio.Writer) (int64, int64, error) {
 }
 
 func gen(args []string) {
+	num, files, found := getSSFs(args)
+	if num > 1 {
+		abort(8, "Too many .ssf files specified)")
+	}
+
 	// Check whether file specified and if so that it does not yet exist and that it ends ".ssf"
 	var w *bufio.Writer
-	if len(args) == 1 {
-		// named file - check it's a valid name
-		fn := args[0]
-		if len(fn) < 5 || fn[len(fn)-4:] != ".ssf" {
-			abort(6, "Output file '"+fn+"' is not an '.ssf'")
-		}
-		// do file read test (want it to fail)
-		_, err := os.Open(fn)
-		if err == nil {
+	if num == 1 {
+		// check not already existing
+		fn := files[0]
+		if found[0] {
 			abort(6, "Output file '"+fn+"' already exists")
 		}
+
 		// open for writing (on 'w' writer handle)
 		file_out, err := os.Create(fn)
 		if err != nil {
