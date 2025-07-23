@@ -4,10 +4,12 @@ Copyright © 2025 Jon Knox <jon@k2x.io>
 package cmd
 
 import (
+	"bufio"
 	"crypto/sha256"
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 )
 
 // Local variables shared across 'cmd' package
@@ -59,4 +61,29 @@ func getSSFs(flist []string) (int, []string, []bool) {
 	}
 
 	return len(ssflist), ssflist, ssfexists
+}
+
+func state_totals(w *bufio.Writer, tf int64, tb int64) {
+	if cli_totals {
+		out := fmt.Sprintf("# %d files, %d bytes", tf, tb)
+		fmt.Fprintln(w, out)
+	}
+}
+
+func state_dupes(w *bufio.Writer) {
+	if cli_dupes {
+		done_header := false
+		for id, times := range dupes {
+			if times > 1 {
+				if !done_header {
+					fmt.Fprintln(w, "# ----------------- Duplicates -----------------")
+					done_header = true
+				}
+				fmt.Fprintln(w, "# "+id+" x"+strconv.Itoa(times))
+			}
+		}
+		if !done_header {
+			fmt.Fprintln(w, "# There were no duplicates")
+		}
+	}
 }

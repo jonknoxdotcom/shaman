@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"strconv"
 )
 
 // generateCmd represents the generate command
@@ -40,7 +39,7 @@ func init() {
 // ----------------------- Generate function below this line -----------------------
 
 func WalkTree(startpath string, w *bufio.Writer) (int64, int64, error) {
-	// uses the "new" (1.16) os.ReadPath functionality
+	// NB: uses Go 1.16 "os.ReadDir" - see: https://benhoyt.com/writings/go-readdir/
 	entries, err := os.ReadDir(startpath)
 	if err != nil {
 		abort(1, "Unrecoverable failure to read directory")
@@ -134,31 +133,9 @@ func gen(args []string) {
 		abort(5, "Internal error #5: ")
 	}
 
-	// Optional totals statement
-	if cli_totals {
-		out := fmt.Sprintf("# %d files, %d bytes", tf, tb)
-		fmt.Fprintln(w, out)
-	}
-
-	// This directory reader uses the new os.ReadDir (req 1.16)
-	// https://benhoyt.com/writings/go-readdir/
-
-	// Optional duplicates statement
-	done_header := false
-	if cli_dupes {
-		for id, times := range dupes {
-			if times > 1 {
-				if !done_header {
-					fmt.Fprintln(w, "# ----------------- Duplicates -----------------")
-					done_header = true
-				}
-				fmt.Fprintln(w, "# "+id+" x"+strconv.Itoa(times))
-			}
-		}
-		if !done_header {
-			fmt.Fprintln(w, "# There were no duplicates")
-		}
-	}
+	// Optional totals and duplicates statements
+	state_totals(w, tf, tb)
+	state_dupes(w)
 
 	w.Flush()
 }
