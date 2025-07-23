@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	//"bufio"
+	"bufio"
 	//"encoding/json"
 	"os"
 	"path"
@@ -73,7 +73,7 @@ func abort(rc int, reason string) {
 	os.Exit(rc)
 }
 
-func WalkTree(startpath string) (int64, int64, error) {
+func WalkTree(startpath string, w *bufio.Writer) (int64, int64, error) {
 	// uses the "new" (1.16) os.ReadPath functionality
 	entries, err := os.ReadDir(startpath)
 	if err != nil {
@@ -91,7 +91,7 @@ func WalkTree(startpath string) (int64, int64, error) {
 			name := path.Join(startpath, entry.Name())
 			info, err := entry.Info()
 			if err != nil {
-				abort(2, "Internal error #2")
+				abort(2, "Internal error #2: "+name)
 			}
 			size := info.Size()
 
@@ -104,19 +104,18 @@ func WalkTree(startpath string) (int64, int64, error) {
 			sha_b64 = sha_b64[0:43]
 			dupes[sha_b64] = dupes[sha_b64] + 1
 
-			if cli_anon {
-				fmt.Println(sha_b64)
-			} else {
+			outbuf := sha_b64
+			if !cli_anon {
 				unixtime := info.ModTime().Unix()
 				// mode := info.Mode() // looks like '-rwxr-xr-x', alsoi synonymous to entry.Type().Perm()
-				fmt.Printf("%s%x%04x :%s", sha_b64, unixtime, size, name)
-				fmt.Println()
+				outbuf += fmt.Sprintf("%x%04x :%s", unixtime, size, name)
 			}
+			fmt.Fprintln(w, outbuf)
 			total_bytes += size
 			total_files++
 		} else {
 			// it's a directory - traverse
-			files, size, err := WalkTree(path.Join(startpath, entry.Name()))
+			files, size, err := WalkTree(path.Join(startpath, entry.Name()), w)
 			if err != nil {
 				return 0, 0, err
 			}
@@ -128,6 +127,32 @@ func WalkTree(startpath string) (int64, int64, error) {
 }
 
 func gen(args []string) {
+	// Check whether file specified and if so that it does not yet exist and that it ends ".ssf"
+	var w *bufio.Writer
+	if len(args) == 1 {
+		// named file - check it's a valid name
+		fn := args[0]
+		if len(fn) < 5 || fn[len(fn)-4:] != ".ssf" {
+			abort(6, "Output file '"+fn+"' is not an '.ssf'")
+		}
+		// do file read test (want it to fail)
+		_, err := os.Open(fn)
+		if err == nil {
+			abort(6, "Output file '"+fn+"' already exists")
+		}
+		// open for writing (on 'w' writer handle)
+		file_out, err := os.Create(fn)
+		if err != nil {
+			abort(4, "Internal error #4: ")
+		}
+		defer file_out.Close()
+		//w = bufio.NewWriter(file_out)
+		w = bufio.NewWriterSize(file_out, 64*1024*1024) // whopping
+
+	} else {
+		// no file given, so use stdout
+		w = bufio.NewWriter(os.Stdout)
+	}
 
 	// Get the encoding path
 	var startpath string = "."
@@ -135,21 +160,16 @@ func gen(args []string) {
 		startpath = cli_path // add validation here
 	}
 
-	// Check whether file specified and if so that it does not yet exist and that it ends ".ssf"
-	if len(args) == 1 {
-
-	}
-
 	// Call the tree walker
-	tf, tb, err := WalkTree(startpath)
+	tf, tb, err := WalkTree(startpath, w)
 	if err != nil {
 		abort(5, "Internal error #5: ")
 	}
 
 	// Optional totals statement
 	if cli_totals {
-		fmt.Printf("# %d files, %d bytes", tf, tb)
-		fmt.Println()
+		out := fmt.Sprintf("# %d files, %d bytes", tf, tb)
+		fmt.Fprintln(w, out)
 	}
 
 	// This directory reader uses the new os.ReadDir (req 1.16)
@@ -161,15 +181,16 @@ func gen(args []string) {
 		for id, times := range dupes {
 			if times > 1 {
 				if !done_header {
-					fmt.Println("# ----------------- Duplicates -----------------")
+					fmt.Fprintln(w, "# ----------------- Duplicates -----------------")
 					done_header = true
 				}
-				fmt.Println("# " + id + " x" + strconv.Itoa(times))
+				fmt.Fprintln(w, "# "+id+" x"+strconv.Itoa(times))
 			}
 		}
 		if !done_header {
-			fmt.Println("# There were no duplicates")
+			fmt.Fprintln(w, "# There were no duplicates")
 		}
 	}
 
+	w.Flush()
 }
