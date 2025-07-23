@@ -1,4 +1,4 @@
-# shaman - hash-based file management/de-cluttering tool
+# shaman - hash-based file manage/de-clutter tool
 
 Tool for handing assets in a verifiable manner as part of a broader management strategy. Allows comparison and clean-up of 'trees' of files. Can be used to de-clutter filespaces, and - as part of a security process - be used to check for sensitive data spillage.
 
