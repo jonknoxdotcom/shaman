@@ -1,7 +1,6 @@
-# shaman - SHA Manager
-Shaman sha256 file manager (using cobra)
+# shaman - hash-based file management/de-cluttering tool
 
-Tool for handing assets in a verifiable manner as part of a broader management strategy. Can be used to de-clutter filespaces, and - as part of a security process - be used to check for sensitive data spillage.
+Tool for handing assets in a verifiable manner as part of a broader management strategy. Allows comparison and clean-up of 'trees' of files. Can be used to de-clutter filespaces, and - as part of a security process - be used to check for sensitive data spillage.
 
 
 ## What it does
@@ -19,6 +18,7 @@ Is:
 Isn't:
 * `shaman` isn't an archiving or backup utility
 * `shaman` isn't a file copying tool
+* `shaman` isn't anything to do with coin crypto (!)
 
 
 ## Uses
