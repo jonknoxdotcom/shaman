@@ -92,11 +92,11 @@ shaman generate -p Desktop/
 shaman gen -p /mnt/thumbdrive oldthumb.jsf
 ```
 
-~~The following example specifies multiple paths that will be form the signature file:
+~~The following example specifies multiple paths that will be form the signature file:~~
 ```
 shaman generate -p accounts/ -p receipts/ -p invoices/ fin.jsf
 ```
-In this case, the paths and collected, sorted, then indexed one by one.  So the single composite output JSF file `fin.jsf` will contain `accounts/...` then `invoices/...` then `receipts/...` records.~~
+~~In this case, the paths and collected, sorted, then indexed one by one.  So the single composite output JSF file `fin.jsf` will contain `accounts/...` then `invoices/...` then `receipts/...` records.~~
 
 
 ### 2. Update an existing JSF file
