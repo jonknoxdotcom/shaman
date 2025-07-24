@@ -5,7 +5,10 @@ package cmd
 
 import (
 	"bufio"
+	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -33,42 +36,70 @@ func init() {
 // ----------------------- Update function below this line -----------------------
 
 func upd(args []string) {
-	// Check whether file specified and if so that it does not yet exist and that it ends ".ssf"
+	// Make sure we have a single input file that exists / error appropriately
+	num, files, found := getSSFs(args)
+	if num > 1 {
+		abort(8, "Too many .ssf files specified")
+	}
+	if num < 1 {
+		abort(10, "Input file not specified")
+	}
+	fn := files[0]
+	if !found[0] {
+		abort(6, "Input SSF file '"+fn+"' does not exists")
+	}
+
+	// Create reader and writer pair
+	var r *os.File
 	var w *bufio.Writer
-	if len(args) == 1 {
-		// named file - check it's a valid name
-		fn := args[0]
-		if len(fn) < 5 || fn[len(fn)-4:] != ".ssf" {
-			abort(6, "Output file '"+fn+"' is not an '.ssf'")
-		}
-		// do file read test (want it to fail)
-		_, err := os.Open(fn)
-		if err == nil {
-			abort(6, "Output file '"+fn+"' already exists")
-		}
-		// open for writing (on 'w' writer handle)
-		file_out, err := os.Create(fn)
-		if err != nil {
-			abort(4, "Internal error #4: ")
-		}
-		defer file_out.Close()
-		//w = bufio.NewWriter(file_out)
-		w = bufio.NewWriterSize(file_out, 64*1024*1024) // whopping
-	} else {
-		// no file given, so use stdout
-		w = bufio.NewWriterSize(os.Stdout, 500) // more 'real time'
-	}
 
-	// Get the encoding path
-	var startpath string = "."
-	if cli_path != "" {
-		startpath = cli_path // add validation here
-	}
-
-	// Call the tree walker
-	tf, tb, err := WalkTree(startpath, w)
+	// open for reading (add some buffering?)
+	r, err := os.Open(fn)
 	if err != nil {
-		abort(5, "Internal error #5: ")
+		abort(4, "Internal error #4: ")
+	}
+	defer r.Close()
+
+	// force create candidate in same location, end .temp, for writing (on 'w' writer handle)
+	fnw := fn + ".temp"
+	file_out, err := os.Create(fnw)
+	if err != nil {
+		abort(4, "Internal error #4: ")
+	}
+	defer file_out.Close()
+	w = bufio.NewWriterSize(file_out, 64*1024*1024)
+
+	// Copy (as a test) using scanner, max line is 64k
+	var lineno int = 0
+	var tf int64 = 0
+	var tb int64 = 0
+	scanner := bufio.NewScanner(r)
+
+	for scanner.Scan() {
+		s := scanner.Text()
+		lineno++
+		// drop comments or empty lines
+		if len(s) == 0 || s[0:1] == "#" {
+			continue
+		}
+		// extract fields
+		tf++
+		pos := strings.IndexByte(s, 32)
+		if pos == -1 {
+			abort(4, "Invalid format on line "+strconv.Itoa(lineno))
+		}
+		id := s[0:pos]
+		// fmt.Println("'" + id + "'")
+		nbytes, err := strconv.ParseInt(id[51:], 16, 0)
+
+		// fmt.Println("'" + id[51:] + "'")
+		// fmt.Println("'" + strconv.Itoa(int(nbytes)) + "'")
+
+		if err != nil {
+			abort(4, "Invalid format on line "+strconv.Itoa(lineno))
+		}
+		tb += nbytes
+		fmt.Fprintln(w, s)
 	}
 
 	// Optional totals and duplicates statements
