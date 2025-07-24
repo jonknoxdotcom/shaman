@@ -82,12 +82,11 @@ func state_dupes(w *bufio.Writer) {
 				multi[id] = times
 			}
 		}
-		keysInOrder := slices.Sorted(maps.Keys(multi))
-		if len(keysInOrder) == 0 {
+		if len(multi) == 0 {
 			fmt.Fprintln(w, "# There were no duplicates")
 		} else {
 			fmt.Fprintln(w, "# ----------------- Duplicates -----------------")
-			for _, id := range keysInOrder {
+			for _, id := range slices.Sorted(maps.Keys(multi)) {
 				fmt.Fprintln(w, "# "+id+" x"+strconv.Itoa(dupes[id]))
 			}
 		}
