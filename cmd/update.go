@@ -4,13 +4,13 @@ Copyright © 2025 Jon Knox <jon@k2x.io>
 package cmd
 
 import (
+	"github.com/spf13/cobra"
+
 	"bufio"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
-
-	"github.com/spf13/cobra"
 )
 
 // updateCmd represents the update command
@@ -89,6 +89,7 @@ func upd(args []string) {
 			abort(4, "Invalid format on line "+strconv.Itoa(lineno))
 		}
 		id := s[0:pos]
+		sha_b64 := s[0:43]
 		// fmt.Println("'" + id + "'")
 		nbytes, err := strconv.ParseInt(id[51:], 16, 0)
 
@@ -99,12 +100,19 @@ func upd(args []string) {
 			abort(4, "Invalid format on line "+strconv.Itoa(lineno))
 		}
 		tb += nbytes
+		if cli_dupes {
+			dupes[sha_b64] = dupes[sha_b64] + 1
+		}
+
 		fmt.Fprintln(w, s)
 	}
 
 	// Optional totals and duplicates statements
 	state_totals(w, tf, tb)
 	state_dupes(w)
+
+	// Determine whether to keep existing file or replace
+	//...
 
 	w.Flush()
 }

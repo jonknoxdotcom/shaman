@@ -8,7 +8,9 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"maps"
 	"os"
+	"slices"
 	"strconv"
 )
 
@@ -17,7 +19,7 @@ var cli_path string = ""     // Path to folder where scan will be performed [cob
 var cli_anon bool = false    // Anonymise the output (discard file, modified time and size)
 var cli_dupes bool = false   // Show duplicates as comments at end of run
 var cli_totals bool = false  // Show files/bytes total at end of run
-var dupes = map[string]int{} // duplicates (collected during walk)
+var dupes = map[string]int{} // duplicate scoreboard (collected during walk)
 
 // Compute SHA256 for a given filename, returning byte array x 32
 func GetSha256OfFile(fn string) ([]byte, error) {
@@ -63,6 +65,7 @@ func getSSFs(flist []string) (int, []string, []bool) {
 	return len(ssflist), ssflist, ssfexists
 }
 
+// Reproducible comment on total number of files/bytes
 func state_totals(w *bufio.Writer, tf int64, tb int64) {
 	if cli_totals {
 		out := fmt.Sprintf("# %d files, %d bytes", tf, tb)
@@ -70,20 +73,23 @@ func state_totals(w *bufio.Writer, tf int64, tb int64) {
 	}
 }
 
+// Reproducible comment on duplicate hashes
 func state_dupes(w *bufio.Writer) {
 	if cli_dupes {
-		done_header := false
+		var multi = map[string]int{} // duplicate>2 hits table
 		for id, times := range dupes {
 			if times > 1 {
-				if !done_header {
-					fmt.Fprintln(w, "# ----------------- Duplicates -----------------")
-					done_header = true
-				}
-				fmt.Fprintln(w, "# "+id+" x"+strconv.Itoa(times))
+				multi[id] = times
 			}
 		}
-		if !done_header {
+		keysInOrder := slices.Sorted(maps.Keys(multi))
+		if len(keysInOrder) == 0 {
 			fmt.Fprintln(w, "# There were no duplicates")
+		} else {
+			fmt.Fprintln(w, "# ----------------- Duplicates -----------------")
+			for _, id := range keysInOrder {
+				fmt.Fprintln(w, "# "+id+" x"+strconv.Itoa(dupes[id]))
+			}
 		}
 	}
 }
