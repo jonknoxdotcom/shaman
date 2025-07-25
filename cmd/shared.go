@@ -10,6 +10,7 @@ import (
 	"io"
 	"maps"
 	"os"
+	"path"
 	"slices"
 	"strconv"
 )
@@ -22,7 +23,7 @@ var cli_totals bool = false  // Show files/bytes total at end of run
 var dupes = map[string]int{} // duplicate scoreboard (collected during walk)
 
 // Compute SHA256 for a given filename, returning byte array x 32
-func GetSha256OfFile(fn string) ([]byte, error) {
+func getSha256OfFile(fn string) ([]byte, error) {
 	f, err := os.Open(fn)
 	if err != nil {
 		return nil, err
@@ -37,9 +38,17 @@ func GetSha256OfFile(fn string) ([]byte, error) {
 	return h.Sum(nil), nil
 }
 
-// Failure - break out of app
+// Abnormal termination - break out of app, all internal fails are 10+
+// All os.Exits across the app are centralised here
 func abort(rc int, reason string) {
-	fmt.Println(reason)
+	if rc < 10 {
+		if reason != "" {
+			fmt.Println(reason)
+		}
+	} else {
+		fmt.Println("Internal error: " + reason)
+		fmt.Println("(Please report to help us improve this tool)")
+	}
 	os.Exit(rc)
 }
 
@@ -52,7 +61,7 @@ func getSSFs(flist []string) (int, []string, []bool) {
 		// named file - check it's a valid name
 		fn := flist[0]
 		if len(fn) < 5 || fn[len(fn)-4:] != ".ssf" {
-			abort(6, "File '"+fn+"' does not end with '.ssf'")
+			abort(6, "file '"+fn+"' does not end with '.ssf'")
 		}
 		ssflist = append(ssflist, fn)
 
@@ -66,7 +75,7 @@ func getSSFs(flist []string) (int, []string, []bool) {
 }
 
 // Reproducible comment on total number of files/bytes
-func state_totals(w *bufio.Writer, tf int64, tb int64) {
+func reportTotals(w *bufio.Writer, tf int64, tb int64) {
 	if cli_totals {
 		out := fmt.Sprintf("# %d files, %d bytes", tf, tb)
 		fmt.Fprintln(w, out)
@@ -74,7 +83,7 @@ func state_totals(w *bufio.Writer, tf int64, tb int64) {
 }
 
 // Reproducible comment on duplicate hashes
-func state_dupes(w *bufio.Writer) {
+func reportDupes(w *bufio.Writer) {
 	if cli_dupes {
 		var multi = map[string]int{} // duplicate>2 hits table
 		for id, times := range dupes {
@@ -87,8 +96,44 @@ func state_dupes(w *bufio.Writer) {
 		} else {
 			fmt.Fprintln(w, "# ----------------- Duplicates -----------------")
 			for _, id := range slices.Sorted(maps.Keys(multi)) {
-				fmt.Fprintln(w, "# "+id+" x"+strconv.Itoa(dupes[id]))
+				fmt.Fprintln(w, "# "+id+" x"+strconv.Itoa(multi[id]))
 			}
+		}
+	}
+}
+
+// Directory walking producer
+
+type triplex struct {
+	filename string
+	modified int64
+	size     int64
+}
+
+func walkTreeToChannel(startpath string, c chan triplex) {
+	entries, err := os.ReadDir(startpath)
+	if err != nil {
+		abort(5, "Unable to read directory (typo?)")
+	}
+
+	// step through dirs
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			if !entry.Type().IsRegular() {
+				// we ignore symlinks
+				continue
+			}
+
+			name := path.Join(startpath, entry.Name())
+			info, err := entry.Info()
+			if err != nil {
+				abort(10, "entry lookup failure for "+name)
+			}
+
+			c <- triplex{name, info.ModTime().Unix(), info.Size()}
+		} else {
+			// it's a directory - dig down
+			walkTreeToChannel(path.Join(startpath, entry.Name()), c)
 		}
 	}
 }
