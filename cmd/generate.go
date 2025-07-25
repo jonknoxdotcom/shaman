@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"bufio"
-	b64 "encoding/base64"
 	"fmt"
 	"os"
 )
@@ -88,26 +87,19 @@ func gen(args []string) {
 	var total_files int64
 	var total_bytes int64
 	for filerec := range fileQueue {
-		// sha generation and trimming
-		sha_bin, _ := getSha256OfFile(filerec.filename)
-		sha_b64 := b64.StdEncoding.EncodeToString(sha_bin)
-		if len(sha_b64) != 44 || sha_b64[43:] != "=" {
-			// can't happen
-			abort(3, "sha result error for "+filerec.filename)
-		}
-		sha_b64 = sha_b64[0:43]
-		if cli_dupes {
-			dupes[sha_b64] = dupes[sha_b64] + 1
-		}
-		total_bytes += filerec.size
-		total_files++
+		_, sha_b64 := getFileSha256(filerec.filename)
 
-		// output stage
 		outbuf := sha_b64
 		if !cli_anon {
 			outbuf += fmt.Sprintf("%x%04x :%s", filerec.modified, filerec.size, filerec.filename)
 		}
 		fmt.Fprintln(w, outbuf)
+
+		if cli_dupes {
+			dupes[sha_b64] = dupes[sha_b64] + 1
+		}
+		total_bytes += filerec.size
+		total_files++
 	}
 
 	// Optional totals and duplicates statements

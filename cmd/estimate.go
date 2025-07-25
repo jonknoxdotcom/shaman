@@ -18,7 +18,7 @@ var estimateCmd = &cobra.Command{
 	Long: `shaman estimate
 Used to count the number of files in the file tree, to allow you to perform informed actions!`,
 	Aliases: []string{"est"},
-	Args:    cobra.MaximumNArgs(0),
+	Args:    cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		est(args)
 	},
@@ -35,6 +35,11 @@ func init() {
 // Rate: 70k files per sec for Desktop on MBP A2141
 
 func est(args []string) {
+	num, _, _ := getSSFs(args)
+	if num > 0 {
+		abort(8, "Can't estimate on a file at the moment)")
+	}
+
 	// Get the encoding path
 	var startpath string = "."
 	if cli_path != "" {
@@ -75,6 +80,6 @@ func est(args []string) {
 	fmt.Println()
 	fmt.Printf("Largest file: %d %s", largest, mem_large)
 	fmt.Println()
-	fmt.Printf("Longest file: %d %s", longest, mem_long)
+	fmt.Printf("Longest name: %d %s", longest, mem_long)
 	fmt.Println()
 }

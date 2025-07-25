@@ -64,6 +64,9 @@ func upd(args []string) {
 		walkTreeToChannel(startpath, fileQueue)
 	}()
 
+	// Retrieve first reference record from file stream
+	//t := chan<-
+
 	// ** now ignore that we have this source and just go about copying data from old to new **
 
 	// create reader from fn get got from getSSF

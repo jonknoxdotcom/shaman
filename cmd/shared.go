@@ -6,6 +6,7 @@ package cmd
 import (
 	"bufio"
 	"crypto/sha256"
+	b64 "encoding/base64"
 	"fmt"
 	"io"
 	"maps"
@@ -22,21 +23,7 @@ var cli_dupes bool = false   // Show duplicates as comments at end of run
 var cli_totals bool = false  // Show files/bytes total at end of run
 var dupes = map[string]int{} // duplicate scoreboard (collected during walk)
 
-// Compute SHA256 for a given filename, returning byte array x 32
-func getSha256OfFile(fn string) ([]byte, error) {
-	f, err := os.Open(fn)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return nil, err
-	}
-
-	return h.Sum(nil), nil
-}
+// ----------------------- General
 
 // Abnormal termination - break out of app, all internal fails are 10+
 // All os.Exits across the app are centralised here
@@ -52,7 +39,7 @@ func abort(rc int, reason string) {
 	os.Exit(rc)
 }
 
-// Return a list of verified SSFs
+// Return a list of verified SSFs. **FIXME**
 func getSSFs(flist []string) (int, []string, []bool) {
 	var ssflist []string
 	var ssfexists []bool
@@ -73,6 +60,36 @@ func getSSFs(flist []string) (int, []string, []bool) {
 
 	return len(ssflist), ssflist, ssfexists
 }
+
+// ----------------------- Hashing
+
+// Compute SHA256 for a given filename, returning byte array x 32 and truncated b64 hash
+func getFileSha256(fn string) ([]byte, string) {
+	f, err := os.Open(fn)
+	if err != nil {
+		// shouldn't happen
+		abort(13, "Found file cannot be opened: "+fn)
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		// shouldn't happen
+		abort(14, "Found file cannot be processed: "+fn)
+	}
+
+	sha_bin := h.Sum(nil)
+	sha_b64 := b64.StdEncoding.EncodeToString(sha_bin)
+	if len(sha_b64) != 44 || sha_b64[43:] != "=" {
+		// can't happen
+		abort(3, "sha result error for "+fn)
+	}
+	sha_b64 = sha_b64[0:43]
+
+	return sha_bin, sha_b64
+}
+
+// ----------------------- Reporting
 
 // Reproducible comment on total number of files/bytes
 func reportTotals(w *bufio.Writer, tf int64, tb int64) {
@@ -102,7 +119,7 @@ func reportDupes(w *bufio.Writer) {
 	}
 }
 
-// Directory walking producer
+// ----------------------- Directory traversal (producer)
 
 type triplex struct {
 	filename string
@@ -113,10 +130,13 @@ type triplex struct {
 func walkTreeToChannel(startpath string, c chan triplex) {
 	entries, err := os.ReadDir(startpath)
 	if err != nil {
-		abort(5, "Unable to read directory (typo?)")
+		fmt.Fprintf(os.Stderr, "Skipping directory: %s\n", startpath)
+		return
+		// abort(5, fmt.Sprintf("Unable to read directory %s", startpath))
+		// abort(5, fmt.Sprintf("Unable to read directory %s (saw %d)", startpath, len(entries)))
 	}
 
-	// step through dirs
+	// step through contents of this dir
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			if !entry.Type().IsRegular() {
@@ -127,7 +147,8 @@ func walkTreeToChannel(startpath string, c chan triplex) {
 			name := path.Join(startpath, entry.Name())
 			info, err := entry.Info()
 			if err != nil {
-				abort(10, "entry lookup failure for "+name)
+				fmt.Fprintf(os.Stderr, "Skipping entry: %s\n", name)
+				continue
 			}
 
 			c <- triplex{name, info.ModTime().Unix(), info.Size()}
