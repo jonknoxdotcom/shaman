@@ -33,9 +33,21 @@ func init() {
 	updateCmd.Flags().StringVarP(&cli_path, "path", "p", "", "Path to directory to scan (default is current directory)")
 	updateCmd.Flags().BoolVarP(&cli_dupes, "dupes", "d", false, "Whether to show dupes (as comments) on completion")
 	updateCmd.Flags().BoolVarP(&cli_totals, "totals", "t", false, "Display count of bytes and files on completion")
+	//updateCmd.Flags().BoolVarP(&cli_hash, "hash", "h", false, "Perform deep hash check on file integrity")
+	updateCmd.Flags().BoolVarP(&cli_summary, "summary", "s", false, "Summarise differences (do not update the reference .ssf)")
+	updateCmd.Flags().BoolVarP(&cli_replace, "replace", "r", false, "Replace input .ssf with updated one (if changed)")
 }
 
 // ----------------------- Update function below this line -----------------------
+
+func getNextTriplex(fileQueue chan triplex) (fs_name string, fs_modt string, fs_size string) {
+	var t triplex
+	t, _ = <-fileQueue
+	///fmt.Println(t)
+	var trip_modt = fmt.Sprintf("%08x", t.modified) // always 8 digits
+	var trip_size = fmt.Sprintf("%04x", t.size)     // overflows 4-8 digits
+	return t.filename, trip_modt, trip_size
+}
 
 func upd(args []string) {
 	// Make sure we have a single input file that exists / error appropriately
@@ -50,22 +62,6 @@ func upd(args []string) {
 	if !found[0] {
 		abort(6, "Input SSF file '"+fn+"' does not exists")
 	}
-
-	// Get the scanning path
-	var startpath string = "."
-	if cli_path != "" {
-		startpath = cli_path // add validation here
-	}
-
-	//  Set up producer channel
-	fileQueue := make(chan triplex, 4096)
-	go func() {
-		defer close(fileQueue)
-		walkTreeToChannel(startpath, fileQueue)
-	}()
-
-	// Retrieve first reference record from file stream
-	//t := chan<-
 
 	// ** now ignore that we have this source and just go about copying data from old to new **
 
@@ -87,41 +83,112 @@ func upd(args []string) {
 	defer file_out.Close()
 	w = bufio.NewWriterSize(file_out, 64*1024*1024)
 
+	// Get tree start, and initiate producer channel
+	var startpath string = "."
+	if cli_path != "" {
+		startpath = cli_path // add validation here
+	}
+	fileQueue := make(chan triplex, 4096)
+	go func() {
+		defer close(fileQueue)
+		walkTreeToChannel(startpath, fileQueue)
+	}()
+
+	// Retrieve first reference record from file stream
+	trip_name, trip_modt, trip_size := getNextTriplex(fileQueue)
+
 	// for now, perform copy (as a test) using scanner on 'r' buffer, max line is 64k
-	var lineno int = 0
-	var tf int64 = 0
-	var tb int64 = 0
+	var lineno int = 0 // needed for error reporting on .ssf file corruptions
+	var tf int64 = 0   // total files
+	var tb int64 = 0   // total bytes
+
+	var nchanges = 0 // how many changes seen
+
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
+		// process the line from scanner (from the SSF file)
 		s := scanner.Text()
 		lineno++
-		// drop comments or empty lines
 		if len(s) == 0 || s[0:1] == "#" {
+			// drop comments or empty lines
 			continue
 		}
-		// extract fields
-		tf++
+
+		// chop up s to get fields
 		pos := strings.IndexByte(s, 32)
 		if pos == -1 {
 			abort(4, "Invalid format on line "+strconv.Itoa(lineno))
 		}
 		id := s[0:pos]
-		sha_b64 := s[0:43]
-		// fmt.Println("'" + id + "'")
-		nbytes, err := strconv.ParseInt(id[51:], 16, 0)
-
-		// fmt.Println("'" + id[51:] + "'")
-		// fmt.Println("'" + strconv.Itoa(int(nbytes)) + "'")
-
+		ssf_shab64 := s[0:43]
+		ssf_modtime := s[43:51]
+		ssf_length := s[51:pos]
+		ssf_name := s[pos+2:]
+		ssf_bytes, err := strconv.ParseInt(id[51:], 16, 0)
 		if err != nil {
 			abort(4, "Invalid format on line "+strconv.Itoa(lineno))
 		}
-		tb += nbytes
-		if cli_dupes {
-			dupes[sha_b64] = dupes[sha_b64] + 1
+		///fmt.Println("Line #", lineno, " '"+ssf_shab64+"', '"+ssf_modtime+"', '"+ssf_length+"', '"+ssf_name+"' bytes =", ssf_bytes)
+
+		// 1. If the filesystem is providing names before the current one, we need to process and add them
+		///fmt.Println("1: " + trip_name + " < " + ssf_name)
+		if trip_name < ssf_name {
+			for trip_name < ssf_name {
+				///fmt.Println("Need to add (from trip) " + trip_name)
+				_, sha_b64 := getFileSha256(trip_name)
+				///fmt.Println("(hash=" + sha_b64 + ")")
+				fmt.Fprintln(w, sha_b64+trip_modt+trip_size+" :"+trip_name)
+				fmt.Println("New: " + trip_name)
+				nchanges++
+
+				trip_name, trip_modt, trip_size = getNextTriplex(fileQueue)
+				if trip_name == "" {
+					break
+				}
+			} // fall out of this for when trip_name >= ssf_name
 		}
 
-		fmt.Fprintln(w, s)
+		// 3. If we are at a matching name, we need to determine if a re-hash is required
+		///fmt.Println("3: " + trip_name + " == " + ssf_name)
+		if trip_name == ssf_name {
+			///fmt.Println("match:", ssf_modtime, trip_modt, ssf_length, trip_size, !cli_hash)
+			if ssf_modtime == trip_modt && ssf_length == trip_size && !cli_hash {
+				// no change - pass through
+				fmt.Fprintln(w, s)
+			} else {
+				// has changed
+				_, sha_b64 := getFileSha256(ssf_name)
+				fmt.Fprintln(w, sha_b64+trip_modt+ssf_length+" :"+ssf_name)
+
+				msg := ""
+				if ssf_modtime != trip_modt {
+					msg += " Time"
+				}
+				if ssf_length != trip_size {
+					msg += " Size"
+				}
+				if ssf_shab64 != sha_b64 {
+					msg += " Hash"
+				}
+				if msg != "" {
+					fmt.Println("Chg: " + ssf_name + "  [" + msg + " ]")
+					nchanges++
+				}
+			}
+			tf++
+			tb += ssf_bytes
+
+			trip_name, trip_modt, trip_size = getNextTriplex(fileQueue)
+			continue
+		}
+
+		// 4. The file stream is before current
+		///fmt.Println("4: " + trip_name + " < " + ssf_name)
+		if trip_name > ssf_name {
+			fmt.Println("Del: " + ssf_name)
+			nchanges++
+		}
+
 	}
 
 	// Optional totals and duplicates statements
@@ -129,7 +196,9 @@ func upd(args []string) {
 	reportDupes(w)
 
 	// Determine whether to keep existing file or replace
-	//...
+	if nchanges > 0 {
+		fmt.Println("There were", nchanges, " change(s) - swapping files")
+	}
 
 	w.Flush()
 }

@@ -38,7 +38,7 @@ func init() {
 
 // ----------------------- Generate function below this line -----------------------
 
-// Rate: 167 files per sec for Desktop on MBP A2141
+// Rate: 167 files per sec (10k/min) for Desktop on MBP A2141
 
 func gen(args []string) {
 	num, files, found := getSSFs(args)

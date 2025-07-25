@@ -32,12 +32,12 @@ func init() {
 
 // ----------------------- Estimate function below this line -----------------------
 
-// Rate: 70k files per sec for Desktop on MBP A2141
+// Rate: 70k files per sec (4M/min) for Desktop on MBP A2141
 
 func est(args []string) {
 	num, _, _ := getSSFs(args)
 	if num > 0 {
-		abort(8, "Can't estimate on a file at the moment)")
+		abort(8, "Can't estimate on a file (at the moment)")
 	}
 
 	// Get the encoding path

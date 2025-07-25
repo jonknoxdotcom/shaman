@@ -21,6 +21,9 @@ var cli_path string = ""     // Path to folder where scan will be performed [cob
 var cli_anon bool = false    // Anonymise the output (discard file, modified time and size)
 var cli_dupes bool = false   // Show duplicates as comments at end of run
 var cli_totals bool = false  // Show files/bytes total at end of run
+var cli_hash bool = false    // Perform deep integrity check by generating and comparing hashes (slow)
+var cli_summary bool = false // Summarise changes from an update, without generating new file
+var cli_replace bool = false // Replace file used in update with updated version if there are changes
 var dupes = map[string]int{} // duplicate scoreboard (collected during walk)
 
 // ----------------------- General
@@ -132,8 +135,6 @@ func walkTreeToChannel(startpath string, c chan triplex) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Skipping directory: %s\n", startpath)
 		return
-		// abort(5, fmt.Sprintf("Unable to read directory %s", startpath))
-		// abort(5, fmt.Sprintf("Unable to read directory %s (saw %d)", startpath, len(entries)))
 	}
 
 	// step through contents of this dir
