@@ -49,18 +49,31 @@ func upd(args []string) {
 		abort(6, "Input SSF file '"+fn+"' does not exists")
 	}
 
-	// Create reader and writer pair
-	var r *os.File
-	var w *bufio.Writer
+	// Get the scanning path
+	var startpath string = "."
+	if cli_path != "" {
+		startpath = cli_path // add validation here
+	}
 
-	// open for reading (add some buffering?)
+	//  Set up producer channel
+	fileQueue := make(chan triplex, 4096)
+	go func() {
+		defer close(fileQueue)
+		walkTreeToChannel(startpath, fileQueue)
+	}()
+
+	// ** now ignore that we have this source and just go about copying data from old to new **
+
+	// create reader from fn get got from getSSF
+	var r *os.File
 	r, err := os.Open(fn)
 	if err != nil {
 		abort(4, "Internal error #4: ")
 	}
 	defer r.Close()
 
-	// force create candidate in same location, end .temp, for writing (on 'w' writer handle)
+	// create writer as same file with ".temp" suffix
+	var w *bufio.Writer
 	fnw := fn + ".temp"
 	file_out, err := os.Create(fnw)
 	if err != nil {
@@ -69,12 +82,11 @@ func upd(args []string) {
 	defer file_out.Close()
 	w = bufio.NewWriterSize(file_out, 64*1024*1024)
 
-	// Copy (as a test) using scanner, max line is 64k
+	// for now, perform copy (as a test) using scanner on 'r' buffer, max line is 64k
 	var lineno int = 0
 	var tf int64 = 0
 	var tb int64 = 0
 	scanner := bufio.NewScanner(r)
-
 	for scanner.Scan() {
 		s := scanner.Text()
 		lineno++
@@ -108,8 +120,8 @@ func upd(args []string) {
 	}
 
 	// Optional totals and duplicates statements
-	state_totals(w, tf, tb)
-	state_dupes(w)
+	reportTotals(w, tf, tb)
+	reportDupes(w)
 
 	// Determine whether to keep existing file or replace
 	//...

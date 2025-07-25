@@ -10,7 +10,6 @@ import (
 	b64 "encoding/base64"
 	"fmt"
 	"os"
-	"path"
 )
 
 // generateCmd represents the generate command
@@ -38,61 +37,6 @@ func init() {
 
 // ----------------------- Generate function below this line -----------------------
 
-func WalkTree(startpath string, w *bufio.Writer) (int64, int64, error) {
-	// NB: uses Go 1.16 "os.ReadDir" - see: https://benhoyt.com/writings/go-readdir/
-	entries, err := os.ReadDir(startpath)
-	if err != nil {
-		abort(1, "Unrecoverable failure to read directory")
-	}
-	var total_files int64
-	var total_bytes int64
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			// we ignore symlinks
-			if !entry.Type().IsRegular() {
-				continue
-			}
-			// emit file data
-			name := path.Join(startpath, entry.Name())
-			info, err := entry.Info()
-			if err != nil {
-				abort(2, "Internal error #2: "+name)
-			}
-			size := info.Size()
-
-			sha_bin, _ := GetSha256OfFile(name)
-			sha_b64 := b64.StdEncoding.EncodeToString(sha_bin)
-			if len(sha_b64) != 44 || sha_b64[43:] != "=" {
-				// can't happen
-				abort(3, "Internal error #3: "+name)
-			}
-			sha_b64 = sha_b64[0:43]
-			if cli_dupes {
-				dupes[sha_b64] = dupes[sha_b64] + 1
-			}
-
-			outbuf := sha_b64
-			if !cli_anon {
-				unixtime := info.ModTime().Unix()
-				// mode := info.Mode() // looks like '-rwxr-xr-x', alsoi synonymous to entry.Type().Perm()
-				outbuf += fmt.Sprintf("%x%04x :%s", unixtime, size, name)
-			}
-			fmt.Fprintln(w, outbuf)
-			total_bytes += size
-			total_files++
-		} else {
-			// it's a directory - traverse
-			files, size, err := WalkTree(path.Join(startpath, entry.Name()), w)
-			if err != nil {
-				return 0, 0, err
-			}
-			total_files += files
-			total_bytes += size
-		}
-	}
-	return total_files, total_bytes, nil
-}
-
 func gen(args []string) {
 	num, files, found := getSSFs(args)
 	if num > 1 {
@@ -111,7 +55,7 @@ func gen(args []string) {
 		// open for writing (on 'w' writer handle)
 		file_out, err := os.Create(fn)
 		if err != nil {
-			abort(4, "Internal error #4: ")
+			abort(4, "Surprisingly, unable to create file "+fn)
 		}
 		defer file_out.Close()
 		//w = bufio.NewWriter(file_out)
@@ -127,15 +71,44 @@ func gen(args []string) {
 		startpath = cli_path // add validation here
 	}
 
-	// Call the tree walker
-	tf, tb, err := WalkTree(startpath, w)
-	if err != nil {
-		abort(5, "Internal error #5: ")
+	// ------------------------------------------
+
+	// Call the tree walker to generate a file list (as a channel)
+	fileQueue := make(chan triplex, 4096)
+	go func() {
+		defer close(fileQueue)
+		walkTreeToChannel(startpath, fileQueue)
+	}()
+
+	// process file list to generate SSF records
+	var total_files int64
+	var total_bytes int64
+	for filerec := range fileQueue {
+		// sha generation and trimming
+		sha_bin, _ := getSha256OfFile(filerec.filename)
+		sha_b64 := b64.StdEncoding.EncodeToString(sha_bin)
+		if len(sha_b64) != 44 || sha_b64[43:] != "=" {
+			// can't happen
+			abort(3, "sha result error for "+filerec.filename)
+		}
+		sha_b64 = sha_b64[0:43]
+		if cli_dupes {
+			dupes[sha_b64] = dupes[sha_b64] + 1
+		}
+		total_bytes += filerec.size
+		total_files++
+
+		// output stage
+		outbuf := sha_b64
+		if !cli_anon {
+			outbuf += fmt.Sprintf("%x%04x :%s", filerec.modified, filerec.size, filerec.filename)
+		}
+		fmt.Fprintln(w, outbuf)
 	}
 
 	// Optional totals and duplicates statements
-	state_totals(w, tf, tb)
-	state_dupes(w)
+	reportTotals(w, total_files, total_bytes)
+	reportDupes(w)
 
 	w.Flush()
 }
