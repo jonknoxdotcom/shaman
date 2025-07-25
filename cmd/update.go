@@ -13,6 +13,8 @@ import (
 	"strings"
 )
 
+// -------------------------------- Cobra management -------------------------------
+
 // updateCmd represents the update command
 var updateCmd = &cobra.Command{
 	Use:     "update",

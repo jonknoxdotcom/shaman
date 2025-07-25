@@ -12,6 +12,8 @@ import (
 	"os"
 )
 
+// -------------------------------- Cobra management -------------------------------
+
 // generateCmd represents the generate command
 var generateCmd = &cobra.Command{
 	Use:   "generate [file.ssf]",
@@ -36,6 +38,8 @@ func init() {
 }
 
 // ----------------------- Generate function below this line -----------------------
+
+// Rate: 167 files per sec for Desktop on MBP A2141
 
 func gen(args []string) {
 	num, files, found := getSSFs(args)
