@@ -63,6 +63,7 @@ func getSSFs(flist []string) (int, []string, []bool) {
 		fd.Close()
 	}
 
+	///fmt.Println(len(ssflist), ssflist, ssfexists)
 	return len(ssflist), ssflist, ssfexists
 }
 

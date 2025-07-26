@@ -91,8 +91,8 @@ func upd(args []string) {
 		fnw = fn + ".temp"
 	} else if num == 2 {
 		// Two files given - from A to B
-		fmt.Println("Updating - new file " + fnw + " will contain updates:")
 		fnw = files[1]
+		fmt.Println("Updating - new file " + fnw + " will contain updates:")
 	} else {
 		// (should not happen)
 		abort(3, "unexpected update")
@@ -102,7 +102,6 @@ func upd(args []string) {
 	// open writing buffer (if used)
 	var w *bufio.Writer
 	if amWriting {
-		fnw := fn + ".temp"
 		file_out, err := os.Create(fnw)
 		if err != nil {
 			abort(4, "Cannot create file "+fnw)
@@ -198,7 +197,7 @@ func upd(args []string) {
 				// has changed
 				_, sha_b64 := getFileSha256(ssf_name)
 				if amWriting {
-					fmt.Fprintln(w, sha_b64+trip_modt+ssf_length+" :"+ssf_name)
+					fmt.Fprintln(w, sha_b64+trip_modt+trip_size+" :"+trip_name)
 				}
 
 				msg := ""
