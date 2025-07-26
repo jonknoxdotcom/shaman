@@ -32,10 +32,10 @@ func init() {
 	// NB: no anonymous switch for update (also, be aware, cannot update an anonymous file)
 	updateCmd.Flags().StringVarP(&cli_path, "path", "p", "", "Path to directory to scan (default is current directory)")
 	updateCmd.Flags().BoolVarP(&cli_dupes, "dupes", "d", false, "Whether to show dupes (as comments) on completion")
-	updateCmd.Flags().BoolVarP(&cli_totals, "totals", "t", false, "Display count of bytes and files on completion")
-	//updateCmd.Flags().BoolVarP(&cli_hash, "hash", "h", false, "Perform deep hash check on file integrity")
+	updateCmd.Flags().BoolVarP(&cli_grand, "grand-totals", "g", false, "Display grand totals of bytes/files on completion")
 	updateCmd.Flags().BoolVarP(&cli_summary, "summary", "s", false, "Summarise differences (do not update the reference .ssf)")
-	updateCmd.Flags().BoolVarP(&cli_replace, "replace", "r", false, "Replace input .ssf with updated one (if changed)")
+	updateCmd.Flags().BoolVarP(&cli_overwrite, "overwrite", "o", false, "Replace input .ssf with updated one (if changed)")
+	updateCmd.Flags().BoolVarP(&cli_rehash, "re-hash", "r", false, "Re-hash files for maximum integrity (compromise detection)")
 }
 
 // ----------------------- Update function below this line -----------------------
@@ -52,7 +52,7 @@ func getNextTriplex(fileQueue chan triplex) (fs_name string, fs_modt string, fs_
 func upd(args []string) {
 	// Make sure we have a single input file that exists / error appropriately
 	num, files, found := getSSFs(args)
-	if num > 1 {
+	if num > 2 {
 		abort(8, "Too many .ssf files specified")
 	}
 	if num < 1 {
@@ -60,10 +60,8 @@ func upd(args []string) {
 	}
 	fn := files[0]
 	if !found[0] {
-		abort(6, "Input SSF file '"+fn+"' does not exists")
+		abort(6, "Input SSF file '"+fn+"' does not exist")
 	}
-
-	// ** now ignore that we have this source and just go about copying data from old to new **
 
 	// create reader from fn get got from getSSF
 	var r *os.File
@@ -74,14 +72,36 @@ func upd(args []string) {
 	defer r.Close()
 
 	// create writer as same file with ".temp" suffix
-	var w *bufio.Writer
-	fnw := fn + ".temp"
-	file_out, err := os.Create(fnw)
-	if err != nil {
-		abort(4, "Internal error #4: ")
+	var fnw string // where to write to (filename to open)
+	if num == 1 && !cli_overwrite {
+		// One file given, nowhere to write output (quick though)
+		fmt.Println("Test run - nothing will be written: (add '-o' if this is wrong)")
+		fnw = ""
+	} else if num == 1 && cli_overwrite {
+		// One file given with --overwrite switch
+		fmt.Println("Updating - file " + fn + " will be overwritten if any changes:")
+		fnw = fn + ".temp"
+	} else if num == 2 {
+		// Two files given - from A to B
+		fmt.Println("Updating - new file " + fnw + " will contain updates:")
+		fnw = files[1]
+	} else {
+		// (should not happen)
+		abort(3, "unexpected update")
 	}
-	defer file_out.Close()
-	w = bufio.NewWriterSize(file_out, 64*1024*1024)
+	amWriting := (fnw != "")
+
+	// open writing buffer (if used)
+	var w *bufio.Writer
+	if amWriting {
+		fnw := fn + ".temp"
+		file_out, err := os.Create(fnw)
+		if err != nil {
+			abort(4, "Cannot create file "+fnw)
+		}
+		defer file_out.Close()
+		w = bufio.NewWriterSize(file_out, 64*1024*1024)
+	}
 
 	// Get tree start, and initiate producer channel
 	var startpath string = "."
@@ -137,8 +157,10 @@ func upd(args []string) {
 				///fmt.Println("Need to add (from trip) " + trip_name)
 				_, sha_b64 := getFileSha256(trip_name)
 				///fmt.Println("(hash=" + sha_b64 + ")")
-				fmt.Fprintln(w, sha_b64+trip_modt+trip_size+" :"+trip_name)
-				fmt.Println("New: " + trip_name)
+				if amWriting {
+					fmt.Fprintln(w, sha_b64+trip_modt+trip_size+" :"+trip_name)
+				}
+				fmt.Println("  New: " + trip_name)
 				nchanges++
 
 				trip_name, trip_modt, trip_size = getNextTriplex(fileQueue)
@@ -152,13 +174,17 @@ func upd(args []string) {
 		///fmt.Println("3: " + trip_name + " == " + ssf_name)
 		if trip_name == ssf_name {
 			///fmt.Println("match:", ssf_modtime, trip_modt, ssf_length, trip_size, !cli_hash)
-			if ssf_modtime == trip_modt && ssf_length == trip_size && !cli_hash {
+			if ssf_modtime == trip_modt && ssf_length == trip_size && !cli_rehash {
 				// no change - pass through
-				fmt.Fprintln(w, s)
+				if amWriting {
+					fmt.Fprintln(w, s)
+				}
 			} else {
 				// has changed
 				_, sha_b64 := getFileSha256(ssf_name)
-				fmt.Fprintln(w, sha_b64+trip_modt+ssf_length+" :"+ssf_name)
+				if amWriting {
+					fmt.Fprintln(w, sha_b64+trip_modt+ssf_length+" :"+ssf_name)
+				}
 
 				msg := ""
 				if ssf_modtime != trip_modt {
@@ -171,7 +197,7 @@ func upd(args []string) {
 					msg += " Hash"
 				}
 				if msg != "" {
-					fmt.Println("Chg: " + ssf_name + "  [" + msg + " ]")
+					fmt.Println("  Chg: " + ssf_name + "  [" + msg + " ]")
 					nchanges++
 				}
 			}
@@ -185,20 +211,30 @@ func upd(args []string) {
 		// 4. The file stream is before current
 		///fmt.Println("4: " + trip_name + " < " + ssf_name)
 		if trip_name > ssf_name {
-			fmt.Println("Del: " + ssf_name)
+			fmt.Println("  Del: " + ssf_name)
 			nchanges++
 		}
-
 	}
-
-	// Optional totals and duplicates statements
-	reportTotals(w, tf, tb)
-	reportDupes(w)
 
 	// Determine whether to keep existing file or replace
 	if nchanges > 0 {
-		fmt.Println("There were", nchanges, " change(s) - swapping files")
+		fmt.Println("There were", nchanges, " change(s)")
 	}
 
-	w.Flush()
+	// Optional totals and duplicates statements (and buffer flush)
+	if amWriting {
+		reportGrandTotals(w, tf, tb)
+		reportDupes(w)
+		w.Flush()
+
+		if cli_overwrite {
+			if nchanges == 0 {
+				fmt.Println("(Nothing written as no changes) " + fn)
+			} else {
+				fmt.Println("Overwriting " + fn + " (with " + fnw + ")")
+				os.Remove(fn)
+				os.Rename(fnw, fn)
+			}
+		}
+	}
 }

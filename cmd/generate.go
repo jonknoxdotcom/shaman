@@ -33,7 +33,8 @@ func init() {
 	generateCmd.Flags().StringVarP(&cli_path, "path", "p", "", "Path to directory to scan (default is current directory)")
 	generateCmd.Flags().BoolVarP(&cli_anon, "anonymous", "a", false, "Whether to mask the SSF output (to include only hashes)")
 	generateCmd.Flags().BoolVarP(&cli_dupes, "dupes", "d", false, "Whether to show dupes (as comments) on completion")
-	generateCmd.Flags().BoolVarP(&cli_totals, "totals", "t", false, "Display count of bytes and files on completion")
+	generateCmd.Flags().BoolVarP(&cli_grand, "grand-totals", "g", false, "Display grand totals of bytes/files on completion")
+
 }
 
 // ----------------------- Generate function below this line -----------------------
@@ -103,7 +104,7 @@ func gen(args []string) {
 	}
 
 	// Optional totals and duplicates statements
-	reportTotals(w, total_files, total_bytes)
+	reportGrandTotals(w, total_files, total_bytes)
 	reportDupes(w)
 
 	w.Flush()

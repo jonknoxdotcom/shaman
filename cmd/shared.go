@@ -16,14 +16,17 @@ import (
 	"strconv"
 )
 
-// Local variables shared across 'cmd' package
-var cli_path string = ""     // Path to folder where scan will be performed [cobra]
-var cli_anon bool = false    // Anonymise the output (discard file, modified time and size)
-var cli_dupes bool = false   // Show duplicates as comments at end of run
-var cli_totals bool = false  // Show files/bytes total at end of run
-var cli_hash bool = false    // Perform deep integrity check by generating and comparing hashes (slow)
-var cli_summary bool = false // Summarise changes from an update, without generating new file
-var cli_replace bool = false // Replace file used in update with updated version if there are changes
+// ----------------------- Global variables (shared across 'cmd' package)
+
+var cli_path string = ""       // Path to folder where scan will be performed [cobra]
+var cli_anon bool = false      // Anonymise the output (discard file, modified time and size)
+var cli_dupes bool = false     // Show duplicates as comments at end of run
+var cli_grand bool = false     // Show grand total of files/bytes total at end
+var cli_rehash bool = false    // Perform deep integrity check by regenerating file hash and comparing (slow)
+var cli_summary bool = false   // Summarise changes from an update, without generating new file
+var cli_overwrite bool = false // Overwrite file used in update with updated version (if there are changes)
+var cli_verbose bool = false   // Provide verbose output (may have not effect)
+
 var dupes = map[string]int{} // duplicate scoreboard (collected during walk)
 
 // ----------------------- General
@@ -95,8 +98,8 @@ func getFileSha256(fn string) ([]byte, string) {
 // ----------------------- Reporting
 
 // Reproducible comment on total number of files/bytes
-func reportTotals(w *bufio.Writer, tf int64, tb int64) {
-	if cli_totals {
+func reportGrandTotals(w *bufio.Writer, tf int64, tb int64) {
+	if cli_grand {
 		out := fmt.Sprintf("# %d files, %d bytes", tf, tb)
 		fmt.Fprintln(w, out)
 	}
