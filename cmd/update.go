@@ -41,12 +41,15 @@ func init() {
 // ----------------------- Update function below this line -----------------------
 
 func getNextTriplex(fileQueue chan triplex) (fs_name string, fs_modt string, fs_size string) {
-	var t triplex
-	t, _ = <-fileQueue
+	t, ok := <-fileQueue
 	///fmt.Println(t)
-	var trip_modt = fmt.Sprintf("%08x", t.modified) // always 8 digits
-	var trip_size = fmt.Sprintf("%04x", t.size)     // overflows 4-8 digits
-	return t.filename, trip_modt, trip_size
+	if !ok {
+		return "", "", ""
+	} else {
+		return t.filename,
+			fmt.Sprintf("%08x", t.modified), // always 8 digits
+			fmt.Sprintf("%04x", t.size) // overflows 4-8 digits
+	}
 }
 
 func upd(args []string) {
@@ -155,11 +158,17 @@ func upd(args []string) {
 		}
 		///fmt.Println("Line #", lineno, " '"+ssf_shab64+"', '"+ssf_modtime+"', '"+ssf_length+"', '"+ssf_name+"' bytes =", ssf_bytes)
 
+		// 0. Check for empty triplex
+		if trip_name == "" {
+			///fmt.Println("[break1!]")
+			break
+		}
+
 		// 1. If the filesystem is providing names before the current one, we need to process and add them
 		///fmt.Println("1: " + trip_name + " < " + ssf_name)
 		if trip_name < ssf_name {
 			for trip_name < ssf_name {
-				///fmt.Println("Need to add (from trip) " + trip_name)
+				///fmt.Println("Need to add (from trip) [" + trip_name + "]")
 				_, sha_b64 := getFileSha256(trip_name)
 				///fmt.Println("(hash=" + sha_b64 + ")")
 				if amWriting {
@@ -170,6 +179,7 @@ func upd(args []string) {
 
 				trip_name, trip_modt, trip_size = getNextTriplex(fileQueue)
 				if trip_name == "" {
+					///fmt.Println("[break2!]")
 					break
 				}
 			} // fall out of this for when trip_name >= ssf_name

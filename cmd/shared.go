@@ -50,9 +50,8 @@ func getSSFs(flist []string) (int, []string, []bool) {
 	var ssflist []string
 	var ssfexists []bool
 
-	if len(flist) == 1 {
+	for _, fn := range flist {
 		// named file - check it's a valid name
-		fn := flist[0]
 		if len(fn) < 5 || fn[len(fn)-4:] != ".ssf" {
 			abort(6, "file '"+fn+"' does not end with '.ssf'")
 		}
