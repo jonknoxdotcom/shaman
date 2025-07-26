@@ -75,7 +75,12 @@ func upd(args []string) {
 	var fnw string // where to write to (filename to open)
 	if num == 1 && !cli_overwrite {
 		// One file given, nowhere to write output (quick though)
-		fmt.Println("Test run - nothing will be written: (add '-o' if this is wrong)")
+		if cli_rehash {
+			fmt.Println("Slow Test - nothing will be written: (add '-o' if this is wrong)")
+			fmt.Println("** Integrity check / all files re-hashed **")
+		} else {
+			fmt.Println("Quick Test - nothing will be written: (add '-o' if this is wrong)")
+		}
 		fnw = ""
 	} else if num == 1 && cli_overwrite {
 		// One file given with --overwrite switch
