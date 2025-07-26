@@ -82,17 +82,18 @@ func upd(args []string) {
 			fmt.Println("Slow Test - nothing will be written: (add '-o' if this is wrong)")
 			fmt.Println("** Integrity check / all files re-hashed **")
 		} else {
-			fmt.Println("Quick Test - nothing will be written: (add '-o' if this is wrong)")
+			fmt.Println("Quick Test without write-back: (add '-o' if this is wrong)")
 		}
 		fnw = ""
 	} else if num == 1 && cli_overwrite {
 		// One file given with --overwrite switch
-		fmt.Println("Updating - file " + fn + " will be overwritten if any changes:")
+		fmt.Println("Updating " + fn + " (will be overwritten if any changes):")
 		fnw = fn + ".temp"
 	} else if num == 2 {
 		// Two files given - from A to B
 		fnw = files[1]
-		fmt.Println("Updating - new file " + fnw + " will contain updates:")
+		fmt.Println("Updating " + fn + " => " + fnw + ":")
+
 	} else {
 		// (should not happen)
 		abort(3, "unexpected update")
@@ -129,8 +130,9 @@ func upd(args []string) {
 	var tf int64 = 0   // total files
 	var tb int64 = 0   // total bytes
 
-	var nchanges = 0 // how many changes seen
-
+	var nnew = 0
+	var ndel = 0
+	var nchg = 0
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		// process the line from scanner (from the SSF file)
@@ -157,13 +159,13 @@ func upd(args []string) {
 		}
 		///fmt.Println("Line #", lineno, " '"+ssf_shab64+"', '"+ssf_modtime+"', '"+ssf_length+"', '"+ssf_name+"' bytes =", ssf_bytes)
 
-		// 0. Check for empty triplex
+		// 1. Check for empty triplex
 		if trip_name == "" {
 			///fmt.Println("[break1!]")
 			break
 		}
 
-		// 1. If the filesystem is providing names before the current one, we need to process and add them
+		// 2. If the filesystem is providing names before the current one, we need to process and add them
 		///fmt.Println("1: " + trip_name + " < " + ssf_name)
 		if trip_name < ssf_name {
 			for trip_name < ssf_name {
@@ -174,7 +176,7 @@ func upd(args []string) {
 					fmt.Fprintln(w, sha_b64+trip_modt+trip_size+" :"+trip_name)
 				}
 				fmt.Println("  New: " + trip_name)
-				nchanges++
+				nnew++
 
 				trip_name, trip_modt, trip_size = getNextTriplex(fileQueue)
 				if trip_name == "" {
@@ -212,7 +214,7 @@ func upd(args []string) {
 				}
 				if msg != "" {
 					fmt.Println("  Chg: " + ssf_name + "  [" + msg + " ]")
-					nchanges++
+					nchg++
 				}
 			}
 			tf++
@@ -226,13 +228,20 @@ func upd(args []string) {
 		///fmt.Println("4: " + trip_name + " < " + ssf_name)
 		if trip_name > ssf_name {
 			fmt.Println("  Del: " + ssf_name)
-			nchanges++
+			ndel++
 		}
 	}
 
 	// Determine whether to keep existing file or replace
-	if nchanges > 0 {
-		fmt.Println("There were", nchanges, " change(s)")
+	nchanges := nnew + ndel + nchg
+	//fmt.Print(nnew, ndel, nchg)
+	switch nchanges {
+	case 0:
+		fmt.Println("Nothing added/deleted/changed - sha-file " + fn + " still correct")
+	case 1:
+		fmt.Println("There was 1 change")
+	default:
+		fmt.Println("There were", nchanges, "changes")
 	}
 
 	// Optional totals and duplicates statements (and buffer flush)
@@ -242,13 +251,16 @@ func upd(args []string) {
 		w.Flush()
 
 		if cli_overwrite {
-			if nchanges == 0 {
-				fmt.Println("(Nothing written as no changes) " + fn)
-			} else {
-				fmt.Println("Overwriting " + fn + " (with " + fnw + ")")
+			if nchanges > 0 {
+				fmt.Println("Overwriting " + fn)
 				os.Remove(fn)
 				os.Rename(fnw, fn)
+				os.Exit(1)
+			} else if cli_grand || cli_dupes {
+				fmt.Println("Ignoring --grand-total and --dupes in order to retain file timestamp")
 			}
 		}
 	}
+
+	os.Exit(0) //explicit (because we're a rc=0 or rc=1 depending on whether any changes)
 }
