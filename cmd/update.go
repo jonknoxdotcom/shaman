@@ -82,7 +82,7 @@ func upd(args []string) {
 			fmt.Println("Slow Test - nothing will be written: (add '-o' if this is wrong)")
 			fmt.Println("** Integrity check / all files re-hashed **")
 		} else {
-			fmt.Println("Quick Test without write-back: (add '-o' if this is wrong)")
+			fmt.Println("Dry-run of update (to save, give second ssf file, or add '-o' to write back)")
 		}
 		fnw = ""
 	} else if num == 1 && cli_overwrite {
@@ -237,7 +237,7 @@ func upd(args []string) {
 	//fmt.Print(nnew, ndel, nchg)
 	switch nchanges {
 	case 0:
-		fmt.Println("Nothing added/deleted/changed - sha-file " + fn + " still correct")
+		fmt.Println("Nothing added/deleted/changed - " + fn + " still good")
 	case 1:
 		fmt.Println("There was 1 change")
 	default:
