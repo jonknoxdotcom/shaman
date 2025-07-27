@@ -53,7 +53,7 @@ func com(args []string) {
 	if len_b < len_a {
 		smaller = 1
 	}
-	slog.Debug("count records to find smaller file", "a", len_a, "b", len_b, "use", files[smaller])
+	slog.Debug("determined which file has fewest records", "a", len_a, "b", len_b, "use", files[smaller])
 
 	// Use scoreboarding to optimize processing
 	var overlap = map[string]bool{} // scoreboard for smaller collection

@@ -23,6 +23,8 @@ func main() {
 	slog.Info("shaman v0.0.56")
 
 	// use cobra to run cli
-	//lvl.Set(slog.LevelDebug) // switch on debug (uncomment to enable)
+	if os.Getenv("DEBUG") == "1" {
+		lvl.Set(slog.LevelDebug) // switch on debug (uncomment to enable)
+	}
 	cmd.Execute()
 }
