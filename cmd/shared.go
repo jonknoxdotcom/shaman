@@ -14,6 +14,7 @@ import (
 	"path"
 	"slices"
 	"strconv"
+	"strings"
 )
 
 // ----------------------- Global variables (shared across 'cmd' package)
@@ -26,6 +27,7 @@ var cli_rehash bool = false    // Perform deep integrity check by regenerating f
 var cli_summary bool = false   // Summarise changes from an update, without generating new file
 var cli_overwrite bool = false // Overwrite file used in update with updated version (if there are changes)
 var cli_verbose bool = false   // Provide verbose output (may have not effect)
+var cli_del_b bool = false     // Delete from B anything that is in A
 
 var dupes = map[string]int{} // duplicate scoreboard (collected during walk)
 
@@ -161,4 +163,137 @@ func walkTreeToChannel(startpath string, c chan triplex) {
 			walkTreeToChannel(path.Join(startpath, entry.Name()), c)
 		}
 	}
+}
+
+// ----------------------- File processing
+
+// return the number of lines with a sha in a file (NOT the number of unique shas)
+func ssfRecCount(fn string) int64 {
+	var r *os.File
+	r, err := os.Open(fn)
+	if err != nil {
+		abort(4, "Can't open "+fn+" - stuck!")
+	}
+	defer r.Close()
+
+	var count int64
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		s := scanner.Text()
+		if len(s) == 0 || s[0:1] == "#" {
+			// drop comments or empty lines
+			continue
+		}
+		count++
+	}
+	return count
+}
+
+// ----------------------- Scoreboards
+
+// read the given ssf file, and create a key=sha, value=flag in map m / return length
+func ssfScoreboardRead(fn string, m map[string]bool, flag bool) (int, int) {
+	var r *os.File
+	r, err := os.Open(fn)
+	if err != nil {
+		abort(4, "Can't open "+fn+" - stuck!")
+	}
+	defer r.Close()
+
+	var count int
+	var s string
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		s = scanner.Text()
+		if len(s) == 0 || s[0:1] == "#" {
+			// drop comments or empty lines
+			continue
+		} else {
+			// set flag with base64 part
+			m[s[0:43]] = flag
+			count++
+		}
+	}
+
+	return len(m), count
+}
+
+// read a file and set map entry to flag only if the sha exists in the map
+func ssfScoreboardMark(fn string, m map[string]bool, flag bool) (int, int) {
+	var r *os.File
+	r, err := os.Open(fn)
+	if err != nil {
+		abort(4, "Can't open "+fn+" - stuck!")
+	}
+	defer r.Close()
+
+	var count int
+	var hits int
+	var s string
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		s = scanner.Text()
+		if len(s) == 0 || s[0:1] == "#" {
+			// drop comments or empty lines
+			continue
+		} else {
+			// set flag with base64 part
+			k := s[0:43]
+			_, ok := m[k]
+			if ok {
+				m[k] = flag
+				///fmt.Println(k)
+				hits++
+			}
+			count++
+		}
+	}
+
+	return count, hits
+}
+
+// remove all of the map entries that are of value target
+func ssfScoreboardRemove(m map[string]bool, target bool) int {
+	// fine to delete map during loop https://go.dev/doc/effective_go#for
+	// basic but useful https://leapcell.io/blog/how-to-delete-from-a-map-in-golang
+	for k, v := range m {
+		if v == target {
+			delete(m, k)
+		}
+	}
+
+	return len(m)
+}
+
+// read the given ssf file, and create a key=sha, value=flag in map m / return length
+func ssfSelectNameByScoreboard(fn string, m map[string]bool, list *[]string) int {
+	var r *os.File
+	r, err := os.Open(fn)
+	if err != nil {
+		abort(4, "Can't open "+fn+" - stuck!")
+	}
+	defer r.Close()
+
+	var s string
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		s = scanner.Text()
+		if len(s) == 0 || s[0:1] == "#" {
+			// drop comments or empty lines
+			continue
+		}
+
+		_, ok := m[s[0:43]]
+		if ok {
+			pos := strings.Index(s, " :")
+			if pos == -1 {
+				fmt.Println("Junk line: " + s)
+			} else {
+				t := s[pos+2:]
+				*list = append(*list, t)
+			}
+		}
+	}
+	///fmt.Println(*list)
+	return len(*list)
 }

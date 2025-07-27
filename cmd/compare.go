@@ -5,35 +5,80 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/spf13/cobra"
 )
 
+// -------------------------------- Cobra management -------------------------------
+
 // compareCmd represents the compare command
 var compareCmd = &cobra.Command{
-	Use:   "compare",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Use:     "compare",
+	Short:   "Compare two .ssf files",
+	Long:    `Compares two files (at hash level) and produces bash-type scripts to delete items between.`,
+	Aliases: []string{"com"},
+	Args:    cobra.MaximumNArgs(99), // handle in code
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("compare called")
+		com(args)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(compareCmd)
+	compareCmd.Flags().BoolVarP(&cli_del_b, "del-b", "", false, "Generate 'rm' for files in B which are present in A")
+}
 
-	// Here you will define your flags and configuration settings.
+// ----------------------- Generate function below this line -----------------------
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// compareCmd.PersistentFlags().String("foo", "", "A help for foo")
+func com(args []string) {
+	// Make sure we have a single input file that exists / error appropriately
+	num, files, found := getSSFs(args)
+	slog.Debug("cli handler", "num", num, "files", files, "found", found)
+	switch true {
+	case num > 2:
+		abort(8, "Too many .ssf files specified - expected two")
+	case num < 2:
+		abort(9, "Two SSF files are needing to make a comparison")
+	case !found[0]:
+		abort(6, "Source SSF file '"+files[0]+"' does not exist")
+	case !found[1]:
+		abort(6, "Target SSF file '"+files[1]+"' does not exist")
+	}
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// compareCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// Work out which smallest
+	len_a := ssfRecCount(files[0])
+	len_b := ssfRecCount(files[1])
+	var smaller int = 0
+	if len_b < len_a {
+		smaller = 1
+	}
+	slog.Debug("count records to find smaller file", "a", len_a, "b", len_b, "use", files[smaller])
+
+	// Use scoreboarding to optimize processing
+	var overlap = map[string]bool{} // scoreboard for smaller collection
+
+	// fill scoreboard with 'false' for each file in smaller set
+	shas, rows := ssfScoreboardRead(files[smaller], overlap, false)
+	slog.Debug("read smaller to get uniq shas", "file", files[smaller], "records", rows, "uniques", shas)
+
+	// mark true for any scoreboard keys in larger target
+	shas, rows = ssfScoreboardMark(files[1-smaller], overlap, true)
+	slog.Debug("use larger to mark shared", "file", files[1-smaller], "intersection", rows, "processed", shas)
+
+	// strip map of non-overlaps
+	shas = ssfScoreboardRemove(overlap, false)
+
+	// how many overlaps?
+	if shas == 0 {
+		abort(0, fmt.Sprintf("There are no overlapping records between '%s' and '%s'", files[0], files[1]))
+	}
+
+	var removalSlice []string
+
+	rows = ssfSelectNameByScoreboard(files[1], overlap, &removalSlice) // not sure
+	fmt.Printf("# Delete %d duplicate files from %s\n", rows, files[1])
+	for _, fndel := range removalSlice {
+		fmt.Printf("rm \"%s\"\n", fndel)
+	}
 }
