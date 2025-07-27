@@ -189,14 +189,16 @@ func upd(args []string) {
 		// 3. If we are at a matching name, we need to determine if a re-hash is required
 		///fmt.Println("3: " + trip_name + " == " + ssf_name)
 		if trip_name == ssf_name {
-			///fmt.Println("match:", ssf_modtime, trip_modt, ssf_length, trip_size, !cli_hash)
+			///fmt.Println("match:", ssf_modtime, trip_modt, ssf_length, trip_size, !cli_rehash)
 			if ssf_modtime == trip_modt && ssf_length == trip_size && !cli_rehash {
 				// no change - pass through
+				///fmt.Println("no change")
 				if amWriting {
 					fmt.Fprintln(w, s)
 				}
 			} else {
 				// has changed
+				///fmt.Println("has change")
 				_, sha_b64 := getFileSha256(ssf_name)
 				if amWriting {
 					fmt.Fprintln(w, sha_b64+trip_modt+trip_size+" :"+trip_name)
@@ -230,6 +232,22 @@ func upd(args []string) {
 			fmt.Println("  Del: " + ssf_name)
 			ndel++
 		}
+	}
+
+	// Input file exhausted - check fro more in the triplex channel
+	trip_name, trip_modt, trip_size = getNextTriplex(fileQueue)
+	///fmt.Println("t=", trip_name)
+	for trip_name != "" {
+		///fmt.Println("Need to add (from trip) [" + trip_name + "]")
+		_, sha_b64 := getFileSha256(trip_name)
+		///fmt.Println("(hash=" + sha_b64 + ")")
+		if amWriting {
+			fmt.Fprintln(w, sha_b64+trip_modt+trip_size+" :"+trip_name)
+		}
+		fmt.Println("  New: " + trip_name)
+		nnew++
+
+		trip_name, trip_modt, trip_size = getNextTriplex(fileQueue)
 	}
 
 	// Determine whether to keep existing file or replace

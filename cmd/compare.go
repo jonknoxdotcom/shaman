@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -80,6 +81,8 @@ func com(args []string) {
 	rows = ssfSelectNameByScoreboard(files[1], overlap, &removalSlice) // not sure
 	fmt.Printf("# Commands to delete %d overlapping files from %s\n", rows, files[1])
 	for _, fndel := range removalSlice {
+		fndel := strings.Replace(fndel, "\"", "\\\"", -1)
+		fndel = strings.Replace(fndel, "$", "\\$", -1)
 		fmt.Printf("rm \"%s\"\n", fndel)
 	}
 }

@@ -49,6 +49,7 @@ func gen(args []string) {
 
 	// Check whether file specified and if so that it does not yet exist and that it ends ".ssf"
 	var w *bufio.Writer
+	ticker := false
 	if num == 1 {
 		// check not already existing
 		fn := files[0]
@@ -64,6 +65,8 @@ func gen(args []string) {
 		defer file_out.Close()
 		//w = bufio.NewWriter(file_out)
 		w = bufio.NewWriterSize(file_out, 64*1024*1024) // whopping
+		ticker = true
+		fmt.Printf("Generating (dot=100)")
 	} else {
 		// no file given, so use stdout
 		w = bufio.NewWriterSize(os.Stdout, 500) // more 'real time'
@@ -99,8 +102,20 @@ func gen(args []string) {
 		if cli_dupes {
 			dupes[sha_b64] = dupes[sha_b64] + 1
 		}
+
+		// stats and ticks (dot every 100, flush every 500)
 		total_bytes += filerec.size
 		total_files++
+		if ticker && total_files%100 == 0 {
+			fmt.Print(".")
+		}
+		if total_files%500 == 0 {
+			w.Flush()
+		}
+	}
+
+	if ticker {
+		fmt.Println(".")
 	}
 
 	// Optional totals and duplicates statements

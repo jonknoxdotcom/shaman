@@ -28,7 +28,9 @@ var cli_summary bool = false   // Summarise changes from an update, without gene
 var cli_overwrite bool = false // Overwrite file used in update with updated version (if there are changes)
 var cli_verbose bool = false   // Provide verbose output (may have not effect)
 var cli_del_b bool = false     // Delete from B anything that is in A
-var cli_flat bool = false      // Whether to recurse
+var cli_cwd bool = false       // Whether to recurse
+var cli_flatten bool = false   // Whether to fold-down directories (using '--')
+var cli_refile bool = false    // Whether to put files into directories (using '--')
 
 var dupes = map[string]int{} // duplicate scoreboard (collected during walk)
 

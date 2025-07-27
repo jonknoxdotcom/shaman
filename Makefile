@@ -14,6 +14,7 @@ compile:
 	@echo "Compiling for every OS and Platform"
 	GOOS=linux GOARCH=arm go build -o bin/${APP}-linux-arm ${APP}.go
 	GOOS=linux GOARCH=arm64 go build -o bin/${APP}-linux-arm64 ${APP}.go
+	GOOS=linux GOARCH=amd64 go build -o bin/${APP}-linux-amd64 ${APP}.go
 	GOOS=freebsd GOARCH=386 go build -o bin/${APP}-freebsd-386 ${APP}.go
 
 skinny:

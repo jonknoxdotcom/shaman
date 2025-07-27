@@ -28,7 +28,9 @@ Reads the current tree, and puts into a bash script (stdout) that you can easily
 func init() {
 	rootCmd.AddCommand(renameCmd)
 
-	renameCmd.Flags().BoolVarP(&cli_flat, "flat", "", false, "Do not follow subdirectories)")
+	renameCmd.Flags().BoolVarP(&cli_cwd, "cwd", "", false, "Current working directory only (no subdirectories)")
+	renameCmd.Flags().BoolVarP(&cli_flatten, "flatten", "", false, "Flatten all files to single directory")
+	renameCmd.Flags().BoolVarP(&cli_refile, "refile", "", false, "Re-file single files into folders")
 }
 
 // ----------------------- Rename function below this line -----------------------
@@ -55,13 +57,33 @@ func ren(args []string) {
 	}()
 
 	// create move list *FIXME* needs pre-sizing
+	var folder string
+	var lastfolder string
 	for filerec := range fileQueue {
 		fn := filerec.filename
-		if cli_flat && strings.Index(fn, "/") > 0 {
+		if cli_cwd && strings.Index(fn, "/") > 0 {
 			continue
 		}
-		q := "\"" + fn + "\""
-		fmt.Printf("mv %-60s  %s\n", q, q)
+		fmt.Println(fn)
+		source := "\"" + strings.Replace(fn, "\"", "\\\"", -1) + "\""
+		dest := source
+		if cli_flatten {
+			// completely flatten
+			dest = strings.Replace(dest, "/", "--", -1)
+		}
+		if cli_refile {
+			// only expand 1-deep tree
+			dest = strings.Replace(dest, "--", "/", 1)
+			pos := strings.Index(dest, "/")
+			if pos != -1 {
+				folder = dest[1:pos]
+			}
+		}
+		if folder != lastfolder {
+			fmt.Printf("mkdir \"%s\"\n", folder)
+			lastfolder = folder
+		}
+		fmt.Printf("mv %-60s  %s\n", source, dest)
 	}
 
 }
