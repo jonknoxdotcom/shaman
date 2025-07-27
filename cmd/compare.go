@@ -64,20 +64,21 @@ func com(args []string) {
 
 	// mark true for any scoreboard keys in larger target
 	shas, rows = ssfScoreboardMark(files[1-smaller], overlap, true)
-	slog.Debug("use larger to mark shared", "file", files[1-smaller], "intersection", rows, "processed", shas)
+	slog.Debug("use larger to mark shared", "file", files[1-smaller], "marked", rows, "processed", shas)
 
 	// strip map of non-overlaps
 	shas = ssfScoreboardRemove(overlap, false)
+	slog.Debug("intersection", "score", shas)
 
 	// how many overlaps?
 	if shas == 0 {
 		abort(0, fmt.Sprintf("There are no overlapping records between '%s' and '%s'", files[0], files[1]))
 	}
 
+	// generate bash command to remove files in B that were in A
 	var removalSlice []string
-
 	rows = ssfSelectNameByScoreboard(files[1], overlap, &removalSlice) // not sure
-	fmt.Printf("# Delete %d duplicate files from %s\n", rows, files[1])
+	fmt.Printf("# Commands to delete %d overlapping files from %s\n", rows, files[1])
 	for _, fndel := range removalSlice {
 		fmt.Printf("rm \"%s\"\n", fndel)
 	}

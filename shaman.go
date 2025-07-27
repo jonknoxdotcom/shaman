@@ -12,15 +12,17 @@ import (
 
 func main() {
 	// init structured logging (hidden)
+	lvl := new(slog.LevelVar) // leveller as variable
+	lvl.Set(slog.LevelError)
+
 	logger := slog.New(slog.NewJSONHandler(
 		os.Stdout,
-		&slog.HandlerOptions{Level: slog.LevelError},
+		&slog.HandlerOptions{Level: lvl},
 	))
-	// logger := slog.New(slog.NewJSONHandler(os.Stdout,
-	// 	&slog.HandlerOptions{Level: slog.LevelDebug}))
-	slog.SetDefault(logger)
+	slog.SetDefault(logger) // means can use normal log() too
 	slog.Info("shaman v0.0.56")
 
 	// use cobra to run cli
+	//lvl.Set(slog.LevelDebug) // switch on debug (uncomment to enable)
 	cmd.Execute()
 }
