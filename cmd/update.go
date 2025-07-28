@@ -122,9 +122,6 @@ func upd(args []string) {
 		walkTreeToChannel(startpath, fileQueue)
 	}()
 
-	// Retrieve first reference record from file stream
-	trip_name, trip_modt, trip_size := getNextTriplex(fileQueue)
-
 	// for now, perform copy (as a test) using scanner on 'r' buffer, max line is 64k
 	var lineno int = 0 // needed for error reporting on .ssf file corruptions
 	var tf int64 = 0   // total files
@@ -133,6 +130,8 @@ func upd(args []string) {
 	var nnew = 0
 	var ndel = 0
 	var nchg = 0
+	trip_name, trip_modt, trip_size := getNextTriplex(fileQueue)
+	///fmt.Println("#Got (init) ", trip_name, trip_modt, trip_size)
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		// process the line from scanner (from the SSF file)
@@ -170,15 +169,16 @@ func upd(args []string) {
 		if trip_name < ssf_name {
 			for trip_name < ssf_name {
 				///fmt.Println("Need to add (from trip) [" + trip_name + "]")
-				_, sha_b64 := getFileSha256(trip_name)
 				///fmt.Println("(hash=" + sha_b64 + ")")
 				if amWriting {
+					_, sha_b64 := getFileSha256(trip_name)
 					fmt.Fprintln(w, sha_b64+trip_modt+trip_size+" :"+trip_name)
 				}
 				fmt.Println("  New: " + trip_name)
 				nnew++
 
 				trip_name, trip_modt, trip_size = getNextTriplex(fileQueue)
+				///fmt.Println("#Got (in 2) ", trip_name, trip_modt, trip_size)
 				if trip_name == "" {
 					///fmt.Println("[break2!]")
 					break
@@ -190,6 +190,7 @@ func upd(args []string) {
 		///fmt.Println("3: " + trip_name + " == " + ssf_name)
 		if trip_name == ssf_name {
 			///fmt.Println("match:", ssf_modtime, trip_modt, ssf_length, trip_size, !cli_rehash)
+			trip_name = "" // we do this so that 'continuation' knows not to duplicate
 			if ssf_modtime == trip_modt && ssf_length == trip_size && !cli_rehash {
 				// no change - pass through
 				///fmt.Println("no change")
@@ -223,31 +224,38 @@ func upd(args []string) {
 			tb += ssf_bytes
 
 			trip_name, trip_modt, trip_size = getNextTriplex(fileQueue)
+			///fmt.Println("#Got (in 3) ", trip_name, trip_modt, trip_size)
 			continue
 		}
 
-		// 4. The file stream is before current
+		// 4. The file stream is before current, so del 'not seen' ssf file (if non-empty)
 		///fmt.Println("4: " + trip_name + " < " + ssf_name)
-		if trip_name > ssf_name {
+		if ssf_name != "" && trip_name > ssf_name {
 			fmt.Println("  Del: " + ssf_name)
 			ndel++
 		}
 	}
 
-	// Input file exhausted - check fro more in the triplex channel
-	trip_name, trip_modt, trip_size = getNextTriplex(fileQueue)
+	// Input file exhausted - check for 1x pending, and tail of triplex channel
+	///fmt.Println("5: left loop tn=" + trip_name)
+	if trip_name == "" {
+		trip_name, trip_modt, trip_size = getNextTriplex(fileQueue)
+		///fmt.Println("#Got (in 5pre) ", trip_name, trip_modt, trip_size)
+	}
+
 	///fmt.Println("t=", trip_name)
 	for trip_name != "" {
 		///fmt.Println("Need to add (from trip) [" + trip_name + "]")
-		_, sha_b64 := getFileSha256(trip_name)
 		///fmt.Println("(hash=" + sha_b64 + ")")
 		if amWriting {
+			_, sha_b64 := getFileSha256(trip_name)
 			fmt.Fprintln(w, sha_b64+trip_modt+trip_size+" :"+trip_name)
 		}
 		fmt.Println("  New: " + trip_name)
 		nnew++
 
 		trip_name, trip_modt, trip_size = getNextTriplex(fileQueue)
+		///fmt.Println("#Got (in 5loop) ", trip_name, trip_modt, trip_size)
 	}
 
 	// Determine whether to keep existing file or replace
@@ -275,7 +283,7 @@ func upd(args []string) {
 				os.Rename(fnw, fn)
 				os.Exit(1)
 			} else if cli_grand || cli_dupes {
-				fmt.Println("Ignoring --grand-total and --dupes in order to retain file timestamp")
+				fmt.Println("Ignoring --grand-total and/or --dupes in order to retain file timestamp")
 			}
 		}
 	}
