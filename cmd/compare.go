@@ -6,7 +6,6 @@ package cmd
 import (
 	"fmt"
 	"log/slog"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -19,6 +18,7 @@ var compareCmd = &cobra.Command{
 	Short:   "Compare two .ssf files",
 	Long:    `Compares two files (at hash level) and produces bash-type scripts to delete items between.`,
 	Aliases: []string{"com"},
+	GroupID: "G2",
 	Args:    cobra.MaximumNArgs(99), // handle in code
 	Run: func(cmd *cobra.Command, args []string) {
 		com(args)
@@ -77,12 +77,14 @@ func com(args []string) {
 	}
 
 	// generate bash command to remove files in B that were in A
-	var removalSlice []string
+	removalSlice := make([]string, 0, 10)                              // shas is the minimum size - likely to grow
 	rows = ssfSelectNameByScoreboard(files[1], overlap, &removalSlice) // not sure
+	rows = ssfSelectNameByScoreboard(files[1], overlap, &removalSlice) // not sure
+	rows = ssfSelectNameByScoreboard(files[1], overlap, &removalSlice) // not sure
+	slog.Debug("size of removal list", "rows", len(removalSlice))
+
 	fmt.Printf("# Commands to delete %d overlapping files from %s\n", rows, files[1])
 	for _, fndel := range removalSlice {
-		fndel := strings.Replace(fndel, "\"", "\\\"", -1)
-		fndel = strings.Replace(fndel, "$", "\\$", -1)
-		fmt.Printf("rm \"%s\"\n", fndel)
+		fmt.Printf("rm \"%s\"\n", bashEscape(fndel))
 	}
 }

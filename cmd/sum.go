@@ -13,35 +13,30 @@ import (
 
 // -------------------------------- Cobra management -------------------------------
 
-// generateCmd represents the generate command
-var generateCmd = &cobra.Command{
-	Use:   "generate [file.ssf]",
-	Short: "Generate a sha-manager signature format (.ssf) file",
-	Long: `shaman generate
-Generate a sha-manager format (.ssf) file from specified directory (or current directory if none specified), 
-writing the output to a named file (or stdout if none given)`,
-	Aliases: []string{"gen"},
+// sumCmd represents the sum command
+var sumCmd = &cobra.Command{
+	Use:   "sum [file.ssf]",
+	Short: "Produce a GNU-style sha256sum check file from an SSF or live directory",
+	Long: `shaman sum file.ssh
+Generate a GNU-style sha256sum check file from an SSF or live directory.  Typically used with the --path
+switch to select a subdirectory. Produces immediately from file, or can calculate live.`,
+	Aliases: []string{"sum"},
 	Args:    cobra.MaximumNArgs(1),
 	GroupID: "G1",
 	Run: func(cmd *cobra.Command, args []string) {
-		gen(args)
+		sum(args)
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(generateCmd)
+	rootCmd.AddCommand(sumCmd)
 
-	generateCmd.Flags().StringVarP(&cli_path, "path", "p", "", "Path to directory to scan (default is current directory)")
-	generateCmd.Flags().BoolVarP(&cli_anon, "anonymous", "a", false, "Whether to mask the SSF output (to include only hashes)")
-	generateCmd.Flags().BoolVarP(&cli_dupes, "dupes", "d", false, "Whether to show dupes (as comments) on completion")
-	generateCmd.Flags().BoolVarP(&cli_grand, "grand-totals", "g", false, "Display grand totals of bytes/files on completion")
+	sumCmd.Flags().StringVarP(&cli_path, "path", "p", "", "Path to directory to use (default is all files)")
 }
 
-// ----------------------- Generate function below this line -----------------------
+// ----------------------- Sum function below this line -----------------------
 
-// Rate: 167 files per sec (10k/min) for Desktop on MBP A2141
-
-func gen(args []string) {
+func sum(args []string) {
 	num, files, found := getSSFs(args)
 	if num > 1 {
 		abort(8, "Too many .ssf files specified)")
@@ -80,14 +75,14 @@ func gen(args []string) {
 
 	// ------------------------------------------
 
-	// Call the tree walker to generate a file list (as a channel)
+	// Call the tree walker to sum a file list (as a channel)
 	fileQueue := make(chan triplex, 4096)
 	go func() {
 		defer close(fileQueue)
 		walkTreeToChannel(startpath, fileQueue)
 	}()
 
-	// process file list to generate SSF records
+	// process file list to sum SSF records
 	var total_files int64
 	var total_bytes int64
 	for filerec := range fileQueue {

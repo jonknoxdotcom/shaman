@@ -19,7 +19,9 @@ var renameCmd = &cobra.Command{
 	Long: `shaman rename
 Reads the current tree, and puts into a bash script (stdout) that you can easily edit`,
 	Aliases: []string{"ren"},
-	Args:    cobra.MaximumNArgs(0),
+	GroupID: "G3",
+
+	Args: cobra.MaximumNArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		ren(args)
 	},

@@ -21,6 +21,7 @@ var updateCmd = &cobra.Command{
 	Short:   "Update an existing SSF file",
 	Long:    `Update an existing SSF file`,
 	Aliases: []string{"upd"},
+	GroupID: "G1",
 	Run: func(cmd *cobra.Command, args []string) {
 		upd(args)
 	},

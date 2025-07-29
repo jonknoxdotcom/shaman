@@ -40,4 +40,22 @@ func init() {
 	// when this action is called directly.
 
 	rootCmd.Flags().BoolP("cli_verbose", "v", false, "Verbose (may do nothing)")
+
+	group1 := &cobra.Group{
+		ID:    "G1",
+		Title: "Creation and maintenance of signature files",
+	}
+	rootCmd.AddGroup(group1)
+
+	group2 := &cobra.Group{
+		ID:    "G2",
+		Title: "Make bash scripts from signature files",
+	}
+	rootCmd.AddGroup(group2)
+
+	group3 := &cobra.Group{
+		ID:    "G3",
+		Title: "Other things",
+	}
+	rootCmd.AddGroup(group3)
 }

@@ -11,9 +11,10 @@ import (
 
 // csvCmd represents the csv command
 var csvCmd = &cobra.Command{
-	Use:   "csv",
-	Short: "Convert SSF file into CSV format (suitable for Excel)",
-	Long:  `Convert SSF file into CSV format (suitable for Excel)`,
+	Use:     "csv",
+	Short:   "Convert SSF file into CSV format (suitable for Excel)",
+	Long:    `Convert SSF file into CSV format (suitable for Excel)`,
+	GroupID: "G3",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("csv called")
 	},

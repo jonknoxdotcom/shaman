@@ -31,6 +31,7 @@ var cli_del_b bool = false     // Delete from B anything that is in A
 var cli_cwd bool = false       // Whether to recurse
 var cli_flatten bool = false   // Whether to fold-down directories (using '--')
 var cli_refile bool = false    // Whether to put files into directories (using '--')
+var cli_incsha bool = false    // Include the SHA on delete listings
 
 var dupes = map[string]int{} // duplicate scoreboard (collected during walk)
 
@@ -297,6 +298,141 @@ func ssfSelectNameByScoreboard(fn string, m map[string]bool, list *[]string) int
 			}
 		}
 	}
-	///fmt.Println(*list)
+
 	return len(*list)
+}
+
+// ssfScoreboardDupRead - entry per SHA, bool false if one, true if multi
+func ssfScoreboardDupRead(fn string, m map[string]bool) (int, int) {
+	var r *os.File
+	r, err := os.Open(fn)
+	if err != nil {
+		abort(4, "Can't open "+fn+" - stuck!")
+	}
+	defer r.Close()
+
+	var multi int
+	var s string
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		s = scanner.Text()
+		if len(s) == 0 || s[0:1] == "#" {
+			// drop comments or empty lines
+			continue
+		} else {
+			// get key
+			k := s[0:43]
+
+			v, ok := m[k]
+			if ok {
+				// existing
+				if !v {
+					m[k] = true
+					multi++
+				}
+			} else {
+				// new
+				m[k] = false
+			}
+		}
+	}
+
+	return len(m), multi
+}
+
+func bashEscape(fn string) string {
+	fn = strings.Replace(fn, "\"", "\\\"", -1)
+	fn = strings.Replace(fn, "$", "\\$", -1)
+	fn = strings.Replace(fn, "~", "\\~", -1)
+	return fn
+}
+
+// Split a line from an SSF into constituent fields (no hex to dec conversion) / empty str on error
+func splitSSFLine(s string) (id string, shab64 string, modtime string, length string, name string) {
+	pos := strings.IndexByte(s, 32)
+	if pos == -1 {
+		return "", "", "", "", ""
+	}
+	id = s[0:pos]
+	shab64 = s[0:43]
+	modtime = s[43:51]
+	length = s[51:pos]
+	name = s[pos+2:]
+	return id, shab64, modtime, length, name
+}
+
+// Take scoreboard and filename, and return 'first use' map and 'reports' strings map
+// We generate two maps:
+//
+//	first[]  : key=filename, val=sha  (the first filename to use this sha)
+//	report[] : key=sha, value=2-5 lines of \n-seperated escaped filenames
+//
+// 1. collect the first names and the report data at same time
+// 2. sort the first table to get report order
+// 3. step through first[], get the sha, and get the contents of the report[sha]
+// e.g.
+// reports = 1
+// first["Lead Title"] = "abcd1234"
+// report["abcd1234"] = "Subordinate One\nSubordinate Two"
+func sshScoreboardReadMapMap(multiple map[string]bool, fn string, first map[string]string, report map[string]string) int {
+
+	// first["Lead Title"] = "abcd1234"
+	// report["abcd1234"] = "Subordinate One\nSubordinate Two"
+
+	// id, _, _, _, _ := splitSSFLine("7xSM0/XwrVYCmUQVNm8XdH7MLURqiwoUs5cRNW0bMQ4685c319d1a6039 :2025-06-19 ransomeware bust thailand.png")
+	// fmt.Println(id)
+	// id = fn
+	// multiple["ss"] = false
+	// return 1
+
+	var r *os.File
+	r, err := os.Open(fn)
+	if err != nil {
+		abort(4, "Can't open "+fn+" - stuck!")
+	}
+	defer r.Close()
+
+	var s string
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		s = scanner.Text()
+		if len(s) == 0 || s[0:1] == "#" {
+			// drop comments or empty lines
+			continue
+		} else {
+			// do something
+			_, shab64, _, _, name := splitSSFLine(s)
+			if shab64 == "" {
+				fmt.Println("Ignoring corrupt line: " + s)
+				continue
+			}
+			if !multiple[shab64] {
+				continue
+			}
+
+			name = bashEscape(name)
+			//fmt.Println("multi " + shab64 + " : " + name)
+
+			v, ok := report[shab64]
+			//fmt.Println(ok, v)
+			if !ok {
+				// must be lead title
+				//fmt.Println("LEAD")
+				first[name] = shab64
+				report[shab64] = ""
+			} else {
+				//fmt.Println("SUBORDINATE")
+				// already have lead
+				if v == "" {
+					// first subordinate
+					report[shab64] = name
+				} else {
+					// later subordinates
+					report[shab64] += "\n" + name
+				}
+			}
+
+		}
+	}
+	return len(first)
 }
