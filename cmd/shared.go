@@ -11,7 +11,6 @@ import (
 	"io"
 	"maps"
 	"os"
-	"path"
 	"slices"
 	"strconv"
 	"strings"
@@ -33,6 +32,7 @@ var cli_flatten bool = false   // Whether to fold-down directories (using '--')
 var cli_refile bool = false    // Whether to put files into directories (using '--')
 var cli_incsha bool = false    // Include the SHA on delete listings
 
+var amWriting bool           // Whether writing
 var dupes = map[string]int{} // duplicate scoreboard (collected during walk)
 
 // ----------------------- General
@@ -127,44 +127,6 @@ func reportDupes(w *bufio.Writer) {
 			for _, id := range slices.Sorted(maps.Keys(multi)) {
 				fmt.Fprintln(w, "# "+id+" x"+strconv.Itoa(multi[id]))
 			}
-		}
-	}
-}
-
-// ----------------------- Directory traversal (producer)
-
-type triplex struct {
-	filename string
-	modified int64
-	size     int64
-}
-
-func walkTreeToChannel(startpath string, c chan triplex) {
-	entries, err := os.ReadDir(startpath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Skipping directory: %s\n", startpath)
-		return
-	}
-
-	// step through contents of this dir
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			if !entry.Type().IsRegular() {
-				// we ignore symlinks
-				continue
-			}
-
-			name := path.Join(startpath, entry.Name())
-			info, err := entry.Info()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Skipping entry: %s\n", name)
-				continue
-			}
-
-			c <- triplex{name, info.ModTime().Unix(), info.Size()}
-		} else {
-			// it's a directory - dig down
-			walkTreeToChannel(path.Join(startpath, entry.Name()), c)
 		}
 	}
 }
