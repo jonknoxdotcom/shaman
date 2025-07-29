@@ -117,7 +117,7 @@ func upd(args []string) {
 
 	// for now, perform copy (as a test) using scanner on 'r' buffer, max line is 64k
 	var lineno int = 0 // needed for error reporting on .ssf file corruptions
-	var verbosity int = 1
+	var verbosity int = 2
 	if cli_verbose {
 		verbosity = 2
 	}
@@ -185,7 +185,7 @@ func upd(args []string) {
 				// if amWriting {
 				// 	fmt.Fprintln(w, s)
 				// }
-				writeRecord(w, amWriting, verbosity, "U", "", trip_modt, trip_size, ssf_name, "") // assumed unchanged
+				writeRecord(w, amWriting, verbosity, "U", ssf_shab64, trip_modt, trip_size, ssf_name, "") // assumed unchanged
 			} else {
 				// has changed
 				///fmt.Println("has change")
@@ -257,9 +257,10 @@ func upd(args []string) {
 		///fmt.Println("#Got (in 5loop) ", trip_name, trip_modt, trip_size)
 	}
 
-	// Determine whether to keep existing file or replace
 	nchanges := nnew + ndel + nchg
-	//fmt.Print(nnew, ndel, nchg)
+	fmt.Printf("new=%d, deleted=%d, changed=%d, unchanged=%d\n", nnew, ndel, nchg, nunc)
+
+	// Determine whether to keep existing file or replace
 	switch nchanges {
 	case 0:
 		fmt.Println("Nothing added/deleted/changed - " + fn + " still good")

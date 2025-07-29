@@ -77,6 +77,7 @@ func getSSFs(flist []string) (int, []string, []bool) {
 
 // Compute SHA256 for a given filename, returning byte array x 32 and truncated b64 hash
 func getFileSha256(fn string) ([]byte, string) {
+	//fmt.Print("*")
 	f, err := os.Open(fn)
 	if err != nil {
 		// shouldn't happen
