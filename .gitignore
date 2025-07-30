@@ -37,3 +37,4 @@ sample/*
 shaman
 poc/
 *.ssf
+_debug*

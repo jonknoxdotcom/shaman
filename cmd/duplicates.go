@@ -31,7 +31,6 @@ func init() {
 	rootCmd.AddCommand(duplicatesCmd)
 
 	duplicatesCmd.Flags().BoolVarP(&cli_incsha, "include-sha", "", false, "Include SHA on any output")
-
 }
 
 // ----------------------- Duplicate function below this line -----------------------
@@ -58,18 +57,16 @@ func dup(args []string) {
 	var multiple = map[string]bool{} // scoreboard for dupe detect
 	rows, dupes := ssfScoreboardDupRead(files[0], multiple)
 	slog.Debug("dup scoreboard read", "file", files[0], "records", rows, "dupes", dupes)
-	fmt.Printf("File %s has %d duplicate SHAs\n", files[0], dupes)
+	fmt.Printf("File %s has %d SHAs with duplicate files\n", files[0], dupes)
 
-	// strip map of non-duplicates
+	// Strip map of non-duplicates, and quit if none to show
 	shas := ssfScoreboardRemove(multiple, false) // unnec
 	slog.Debug("duplication", "shas", shas)
-
-	// how many duplicates?
 	if shas == 0 {
 		abort(0, fmt.Sprintf("There are no duplicated files in '%s'", files[0]))
 	}
 
-	// HOW IT WORKS
+	// FORMING THE SORTED LIST OF DUPES - HOW IT WORKS
 	// We generate two maps:
 	//   first[]  : key=filename, val=sha  (the first filename to use this sha)
 	//   report[] : key=sha, value=2-5 lines of \n-seperated escaped filenames
@@ -77,15 +74,14 @@ func dup(args []string) {
 	// 2. sort the first table to get report order
 	// 3. step through first[], get the sha, and get the contents of the report[sha]
 
-	// collect data
+	// Collect data using pair of maps joined by sha...
 	var first = map[string]string{}  // first fn to use sha -> sha
 	var report = map[string]string{} // sha -> report text
-	nreports := sshScoreboardReadMapMap(multiple, files[0], first, report)
-	fmt.Printf("Found %d duplicate blocks\n", nreports)
+	nreports, nfiles := sshScoreboardReadMapMap(multiple, files[0], first, report)
+	fmt.Printf("Found %d duplicate blocks comprising %d files (potentially %d excess files)\n", nreports, nfiles, nfiles-nreports)
 
-	// finding keys to maps...
-	// see https://github.com/golang/go/issues/61538
-	// see: https://pkg.go.dev/maps#Keys
+	// Create chunks of answers, sorted by first filename, and write out (optional sha)
+	// ref: https://github.com/golang/go/issues/61538 & https://pkg.go.dev/maps#Keys
 	firstkeys := slices.Sorted(maps.Keys(first))
 	for _, fk := range firstkeys {
 		if cli_incsha {

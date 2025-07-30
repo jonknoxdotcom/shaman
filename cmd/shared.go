@@ -337,7 +337,7 @@ func splitSSFLine(s string) (id string, shab64 string, modtime string, length st
 // reports = 1
 // first["Lead Title"] = "abcd1234"
 // report["abcd1234"] = "Subordinate One\nSubordinate Two"
-func sshScoreboardReadMapMap(multiple map[string]bool, fn string, first map[string]string, report map[string]string) int {
+func sshScoreboardReadMapMap(multiple map[string]bool, fn string, first map[string]string, report map[string]string) (int, int) {
 
 	// first["Lead Title"] = "abcd1234"
 	// report["abcd1234"] = "Subordinate One\nSubordinate Two"
@@ -356,6 +356,7 @@ func sshScoreboardReadMapMap(multiple map[string]bool, fn string, first map[stri
 	defer r.Close()
 
 	var s string
+	var tm int
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		s = scanner.Text()
@@ -373,6 +374,7 @@ func sshScoreboardReadMapMap(multiple map[string]bool, fn string, first map[stri
 				continue
 			}
 
+			tm++
 			name = bashEscape(name)
 			//fmt.Println("multi " + shab64 + " : " + name)
 
@@ -397,5 +399,5 @@ func sshScoreboardReadMapMap(multiple map[string]bool, fn string, first map[stri
 
 		}
 	}
-	return len(first)
+	return len(first), tm
 }
