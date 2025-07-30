@@ -69,9 +69,9 @@ func dup(args []string) {
 	// FORMING THE SORTED LIST OF DUPES - HOW IT WORKS
 	// We generate two maps:
 	//   first[]  : key=filename, val=sha  (the first filename to use this sha)
-	//   report[] : key=sha, value=2-5 lines of \n-seperated escaped filenames
+	//   report[] : key=sha, value=2/3/4... lines of \n-separated escaped filenames
 	// 1. collect the first names and the report data at same time
-	// 2. sort the first table to get report order
+	// 2. sort the first table's keys to get report order (firstkeys)
 	// 3. step through first[], get the sha, and get the contents of the report[sha]
 
 	// Collect data using pair of maps joined by sha...
