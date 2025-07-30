@@ -73,7 +73,7 @@ func upd(args []string) {
 			fmt.Println("Slow Test - nothing will be written: (add '-o' if this is wrong)")
 			fmt.Println("** Integrity check / all files re-hashed **")
 		} else {
-			fmt.Println("Dry-run of update (to save, give second ssf file, or add '-o' to write back)")
+			fmt.Println("Dry-run of update (save by giving second file, or write back with '-o')")
 		}
 		fnw = ""
 	} else if num == 1 && cli_overwrite {
@@ -258,16 +258,16 @@ func upd(args []string) {
 	}
 
 	nchanges := nnew + ndel + nchg
-	fmt.Printf("new=%d, deleted=%d, changed=%d, unchanged=%d\n", nnew, ndel, nchg, nunc)
+	updateDetails := fmt.Sprintf("(new=%d, deleted=%d, changed=%d, unchanged=%d)", nnew, ndel, nchg, nunc)
 
 	// Determine whether to keep existing file or replace
 	switch nchanges {
 	case 0:
-		fmt.Println("Nothing added/deleted/changed - " + fn + " still good")
+		fmt.Println("There were 0 changes - " + fn + " still good")
 	case 1:
-		fmt.Println("There was 1 change")
+		fmt.Println("There was 1 change " + updateDetails)
 	default:
-		fmt.Println("There were", nchanges, "changes")
+		fmt.Println("There were", nchanges, "changes "+updateDetails)
 	}
 
 	// Optional totals and duplicates statements (and buffer flush)

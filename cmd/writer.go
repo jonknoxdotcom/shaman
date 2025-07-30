@@ -80,11 +80,11 @@ func writeRecord(w *bufio.Writer, amWriting bool, verbosity int, tag string, sha
 	case "U":
 		// Unchanged
 		msg = "  N/C: " + name
-		nchg++
+		nunc++
 	case "V":
 		// Verified unchanged (we checked the )
 		msg = "  N/C: " + name + " (verified)"
-		nchg++
+		nunc++
 	case "D":
 		// Deleted
 		msg = "  Del: " + name
