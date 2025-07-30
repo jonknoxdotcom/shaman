@@ -6,7 +6,8 @@ package cmd
 import (
 	"fmt"
 	"log/slog"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -82,37 +83,10 @@ func dup(args []string) {
 	nreports := sshScoreboardReadMapMap(multiple, files[0], first, report)
 	fmt.Printf("Found %d duplicate blocks\n", nreports)
 
-	// var count int
-
-	// // fmt.Println("-------------------------------------------------------------------------------------------")
-	// fmt.Println("\n\nFIRST:")
-	// fmt.Println("There are ", len(first))
-	// count = 0
-	// for k, v := range first {
-	// 	fmt.Println(count, k+" = "+v)
-	// 	count++
-	// }
-	// fmt.Println("-------------------------------------------------------------------------------------------")
-
-	// fmt.Println("\n\nREPORT:")
-	// fmt.Println("There are ", len(report))
-
-	// count = 0
-	// for k, v := range report {
-	// 	fmt.Println(count, k+" = "+v)
-	// 	count++
-	// }
-	// fmt.Println("-------------------------------------------------------------------------------------------")
-
-	// this is awful; see https://github.com/golang/go/issues/61538
-	var firstkeys []string
-	firstkeys = make([]string, 0, nreports)
-	for k := range first {
-		firstkeys = append(firstkeys, k)
-	}
-	sort.Strings(firstkeys)
-
-	// pretty print the commands
+	// finding keys to maps...
+	// see https://github.com/golang/go/issues/61538
+	// see: https://pkg.go.dev/maps#Keys
+	firstkeys := slices.Sorted(maps.Keys(first))
 	for _, fk := range firstkeys {
 		if cli_incsha {
 			fmt.Println("# " + first[fk])
