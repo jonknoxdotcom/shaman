@@ -6,7 +6,8 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/shaman.go upd test.ssf test-new.ssf",
+            "program": "${workspaceFolder}/shaman.go",
+            "args":[ "upd", "test.ssf","test-new.ssf"],
             "cwd": "${workspaceFolder}/"
         }
     ]

@@ -13,10 +13,6 @@ import (
 
 // ----------------------- Shared writer function -----------------------
 
-// primary buffer handle
-var w *bufio.Writer // buffer writer
-var fwh *os.File    // underlying file write handle
-
 // counters
 var tf int64   // total files
 var tb int64   // total bytes
@@ -26,35 +22,29 @@ var ndel int64 // deleted (dropped)
 var nunc int64 // unchanged
 var dot int    // dot ticker
 
-func writeInit(w *bufio.Writer, fnw string) {
-	fmt.Println("fnw=" + fnw)
+func writeInit(fnw string) *bufio.Writer {
+	var w *bufio.Writer // buffer writer (local!)
 
 	if fnw != "" {
-		fmt.Println("A")
 		// write to file
+		//var err error
 		fwh, err := os.Create(fnw)
 		if err != nil {
 			abort(4, "Cannot create file "+fnw)
 		}
-		fmt.Println("B")
 
-		//w = bufio.NewWriterSize(fwh, 64*1024*1024)
-		w = bufio.NewWriterSize(fwh, 64)
-		fmt.Println("C")
+		w = bufio.NewWriterSize(fwh, 64*1024)
 
 	} else {
 		// write to stdout
 		w = bufio.NewWriterSize(os.Stdout, 32) // more 'real time'
-		fmt.Println("D")
 	}
 
-	fmt.Println("E")
+	return w
 }
 
 // verbosity: 0=nothing, 1=dots, 2=explanation line
 func writeRecord(w *bufio.Writer, amWriting bool, verbosity int, tag string, shab64 string, modt string, size string, name string, flags string) {
-
-	///fmt.Println("writeRecord called ", amWriting, ",", verbosity, ",", tag, ",", shab64, ",", modt, ",", size, ",", name, ",", flags)
 	// type and counters
 	msg := ""
 	trail := ""

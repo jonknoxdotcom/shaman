@@ -44,8 +44,9 @@ func init() {
 // ----------------------- Update function below this line -----------------------
 
 func upd(args []string) {
-	var fnr string // filename for reading
-	var fnw string // where to write to (filename to open)
+	var fnr string      // filename for reading
+	var fnw string      // where to write to (filename to open)
+	var w *bufio.Writer // buffer writer
 
 	// process CLI
 	num, files, found := getSSFs(args)
@@ -94,26 +95,8 @@ func upd(args []string) {
 	}
 
 	// open writing buffer (if used)
-	internal := true
-
-	if !internal {
-		writeInit(w, fnw)
-	}
-
+	w = writeInit(fnw)
 	amWriting := (fnw != "")
-
-	if internal {
-
-		if amWriting {
-			file_out, err := os.Create(fnw)
-			if err != nil {
-				abort(4, "Cannot create file "+fnw)
-			}
-			defer file_out.Close()
-			w = bufio.NewWriterSize(file_out, 64*1024*1024)
-		}
-
-	}
 
 	// get tree start, and initiate producer channel
 	var startpath string = "."
