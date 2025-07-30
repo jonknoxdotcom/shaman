@@ -57,7 +57,7 @@ func upd(args []string) {
 		abort(9, "Input file not specified")
 	case !found[0]:
 		abort(6, "SSF file '"+files[0]+"' does not exist")
-	case !found[1]:
+	case num > 1 && found[1]:
 		fmt.Println("Output file '" + files[1] + "' will be overwritten")
 	}
 
@@ -94,17 +94,25 @@ func upd(args []string) {
 	}
 
 	// open writing buffer (if used)
-	///writeInit(w, fnw)
+	internal := true
+
+	if !internal {
+		writeInit(w, fnw)
+	}
+
 	amWriting := (fnw != "")
 
-	// var w *bufio.Writer
-	if amWriting {
-		file_out, err := os.Create(fnw)
-		if err != nil {
-			abort(4, "Cannot create file "+fnw)
+	if internal {
+
+		if amWriting {
+			file_out, err := os.Create(fnw)
+			if err != nil {
+				abort(4, "Cannot create file "+fnw)
+			}
+			defer file_out.Close()
+			w = bufio.NewWriterSize(file_out, 64*1024*1024)
 		}
-		defer file_out.Close()
-		w = bufio.NewWriterSize(file_out, 64*1024*1024)
+
 	}
 
 	// get tree start, and initiate producer channel

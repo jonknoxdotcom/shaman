@@ -26,31 +26,30 @@ var ndel int64 // deleted (dropped)
 var nunc int64 // unchanged
 var dot int    // dot ticker
 
-// func writeInit(w *bufio.Writer, fnw string) {
-// 	fmt.Println("fnw=" + fnw)
+func writeInit(w *bufio.Writer, fnw string) {
+	fmt.Println("fnw=" + fnw)
 
-// 	if fnw != "" {
-// 		fmt.Println(w, "A")
-// 		// write to file
-// 		fwh, err := os.Create(fnw)
-// 		if err != nil {
-// 			abort(4, "Cannot create file "+fnw)
-// 		}
-// 		fmt.Println(w, "B")
+	if fnw != "" {
+		fmt.Println("A")
+		// write to file
+		fwh, err := os.Create(fnw)
+		if err != nil {
+			abort(4, "Cannot create file "+fnw)
+		}
+		fmt.Println("B")
 
-// 		//w = bufio.NewWriterSize(fwh, 64*1024*1024)
-// 		w = bufio.NewWriterSize(fwh, 64)
-// 		fmt.Println(w, "C")
+		//w = bufio.NewWriterSize(fwh, 64*1024*1024)
+		w = bufio.NewWriterSize(fwh, 64)
+		fmt.Println("C")
 
-// 	} else {
-// 		// write to stdout
-// 		w = bufio.NewWriterSize(os.Stdout, 32) // more 'real time'
-// 		fmt.Println(w, "D")
-// 	}
-// 	fmt.Println(w, "E")
-// 	fmt.Println(w, "test of end write init")
-// 	abort(0, "")
-// }
+	} else {
+		// write to stdout
+		w = bufio.NewWriterSize(os.Stdout, 32) // more 'real time'
+		fmt.Println("D")
+	}
+
+	fmt.Println("E")
+}
 
 // verbosity: 0=nothing, 1=dots, 2=explanation line
 func writeRecord(w *bufio.Writer, amWriting bool, verbosity int, tag string, shab64 string, modt string, size string, name string, flags string) {
@@ -66,7 +65,7 @@ func writeRecord(w *bufio.Writer, amWriting bool, verbosity int, tag string, sha
 	case "C":
 		msg = "  Chg: " + name
 		nchg++
-		if strings.Contains(flags, "M") {
+		if strings.Contains(flags, "T") {
 			trail += " [Time]"
 		}
 		if strings.Contains(flags, "S") {
