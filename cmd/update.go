@@ -8,6 +8,7 @@ import (
 
 	"bufio"
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -43,57 +44,60 @@ func init() {
 // ----------------------- Update function below this line -----------------------
 
 func upd(args []string) {
+	var fnr string // filename for reading
+	var fnw string // where to write to (filename to open)
 
-	// Make sure we have a single input file that exists / error appropriately
+	// process CLI
 	num, files, found := getSSFs(args)
-	if num > 2 {
-		abort(8, "Too many .ssf files specified")
-	}
-	if num < 1 {
-		abort(10, "Input file not specified")
-	}
-	fn := files[0]
-	if !found[0] {
-		abort(6, "Input SSF file '"+fn+"' does not exist")
+	slog.Debug("cli handler", "num", num, "files", files, "found", found)
+	switch true {
+	case num > 2:
+		abort(8, "Too many .ssf files - expected one or two")
+	case num < 1:
+		abort(9, "Input file not specified")
+	case !found[0]:
+		abort(6, "SSF file '"+files[0]+"' does not exist")
+	case !found[1]:
+		fmt.Println("Output file '" + files[1] + "' will be overwritten")
 	}
 
-	// create reader from fn get got from getSSF
+	// create reader from fnr get got from getSSF
+	fnr = files[0]
 	var r *os.File
-	r, err := os.Open(fn)
+	r, err := os.Open(fnr)
 	if err != nil {
 		abort(4, "Internal error #4: ")
 	}
 	defer r.Close()
 
 	// create writer as same file with ".temp" suffix
-	var fnw string // where to write to (filename to open)
 	if num == 1 && !cli_overwrite {
 		// One file given, nowhere to write output (quick though)
+		fnw = ""
 		if cli_rehash {
 			fmt.Println("Slow Test - nothing will be written: (add '-o' if this is wrong)")
 			fmt.Println("** Integrity check / all files re-hashed **")
 		} else {
 			fmt.Println("Dry-run of update (save by giving second file, or write back with '-o')")
 		}
-		fnw = ""
 	} else if num == 1 && cli_overwrite {
 		// One file given with --overwrite switch
-		fmt.Println("Updating " + fn + " (will be overwritten if any changes):")
-		fnw = fn + ".temp"
+		fnw = fnr + ".temp"
+		fmt.Println("Updating " + fnr + " (will be overwritten if any changes):")
 	} else if num == 2 {
 		// Two files given - from A to B
 		fnw = files[1]
-		fmt.Println("Updating " + fn + " => " + fnw + ":")
-
+		fmt.Println("Updating " + fnr + " => " + fnw + ":")
 	} else {
 		// (should not happen)
 		abort(3, "unexpected update")
 	}
 
 	// open writing buffer (if used)
-	amWriting := (fnw != "") // global
+	///writeInit(w, fnw)
+	amWriting := (fnw != "")
 
-	var w *bufio.Writer
+	// var w *bufio.Writer
 	if amWriting {
 		file_out, err := os.Create(fnw)
 		if err != nil {
@@ -221,12 +225,13 @@ func upd(args []string) {
 
 	switch nchanges {
 	case 0:
-		fmt.Println("There were 0 changes - " + fn + " still good")
+		fmt.Println("There were 0 changes - " + fnr + " still good")
 	case 1:
 		fmt.Println("There was 1 change " + updateDetails)
 	default:
 		fmt.Println("There were", nchanges, "changes "+updateDetails)
 	}
+	slog.Debug("changes", "new", nnew, "del", ndel, "nchg", nchg, "unchanged", nunc, "tf", tf, "tb", tb)
 
 	// Optional totals and duplicates statements + file shuffle and final buffer flush
 	if amWriting {
@@ -236,9 +241,9 @@ func upd(args []string) {
 
 		if cli_overwrite {
 			if nchanges > 0 {
-				fmt.Println("Overwriting " + fn)
-				os.Remove(fn)
-				os.Rename(fnw, fn)
+				fmt.Println("Overwriting " + fnr)
+				os.Remove(fnr)
+				os.Rename(fnw, fnr)
 				os.Exit(1)
 			} else if cli_grand || cli_dupes {
 				// if the ssf file was correct, then we do not update it to preserve its timestamp

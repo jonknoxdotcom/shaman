@@ -13,20 +13,18 @@ import (
 
 // ----------------------- Shared writer function -----------------------
 
-// write variables (globals)
-var tf int64 // total files
-var tb int64 // total bytes
+// primary buffer handle
+var w *bufio.Writer // buffer writer
+var fwh *os.File    // underlying file write handle
 
+// counters
+var tf int64   // total files
+var tb int64   // total bytes
 var nnew int64 // new records written
 var nchg int64 // changed record written
 var ndel int64 // deleted (dropped)
 var nunc int64 // unchanged
-
-var dot int // dot ticker
-
-var fwh *os.File
-
-//var w *bufio.Writer
+var dot int    // dot ticker
 
 // func writeInit(w *bufio.Writer, fnw string) {
 // 	fmt.Println("fnw=" + fnw)
