@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strconv"
 	"strings"
 )
 
@@ -122,6 +121,7 @@ func upd(args []string) {
 		// process the line from scanner (from the SSF file)
 		s := scanner.Text()
 		lineno++
+		//fmt.Println(lineno, s)
 
 		// drop comments or empty lines
 		if len(s) == 0 || s[0:1] == "#" {
@@ -130,20 +130,19 @@ func upd(args []string) {
 
 		// chop up s to get fields *FIXME* add annotation handling here **
 		pos := strings.IndexByte(s, 32)
-		if pos == -1 {
-			abort(4, "Invalid format on line "+strconv.Itoa(lineno))
+		if pos == -1 || pos < 55 {
+			fmt.Printf("Deleting line %d - Invalid format on line (pos %d)\n", lineno, pos)
+			ndel++
+			continue
 		}
 		ssf_shab64 := s[0:43]
 		ssf_modtime := s[43:51]
 		ssf_length := s[51:pos]
 		ssf_name := s[pos+2:]
-		if err != nil {
-			abort(4, "Invalid format on line "+strconv.Itoa(lineno))
-		}
 
 		// 1/5 Check for empty triplex
 		if trip_name == "" {
-			fmt.Println("[break! #1]")
+			//fmt.Println("[break! #1]")
 			break
 		}
 

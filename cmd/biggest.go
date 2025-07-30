@@ -90,8 +90,8 @@ SCANLOOP:
 
 		// check size with least kerfuffle
 		pos1 := strings.Index(s, " ")
-		temp := "0000" + s[51:pos1]
-		size := temp[len(temp)-8:]
+		temp := "000000" + s[51:pos1]
+		size := temp[len(temp)-10:]
 		if size < thresh {
 			// off the bottom - no need to do any more
 			// fmt.Println("off the bottom")
@@ -150,10 +150,10 @@ SCANLOOP:
 	}
 
 	fmt.Println("TOP", N, "BY SIZE")
-	fmt.Println("POS  HEX SIZE  ---SIZE---   #  FILENAME")
+	fmt.Println("POS   HEX SIZE ----SIZE----   #  FILENAME")
 	var decnum int64 = 0
 	for x := 0; x < N; x++ {
 		decnum, _ = strconv.ParseInt(sizes[x], 16, 0)
-		fmt.Printf("%2d:  %s  %10d %3d  %s\n", x+1, sizes[x], decnum, dupes[x], names[x])
+		fmt.Printf("%2d:  %s%12d %3d  %s\n", x+1, sizes[x], decnum, dupes[x], names[x])
 	}
 }

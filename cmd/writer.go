@@ -105,7 +105,7 @@ func writeRecord(w *bufio.Writer, amWriting bool, verbosity int, tag string, sha
 		// flush control
 		//fmt.Println("Totals:", tf, tb)
 		if tf%500 == 0 {
-			fmt.Println("Flushing output buffer")
+			//fmt.Println("Flushing output buffer")
 			w.Flush()
 		}
 	}
