@@ -36,6 +36,31 @@ func init() {
 
 // ----------------------- Sum function below this line -----------------------
 
+// Usage:
+// shaman exp file.ssf -t sha256sum -p bin/ --base
+// shaman exp file.ssf -t tsv
+// shaman exp file.ssf -t csv
+// shaman exp file.ssf -t tsv --filter Y
+// shaman exp file.ssf -t tsv --filter JGW
+// shaman exp file.ssf subset.ssf  -p folder/ --base
+// shaman exp file.ssf -t col -p bills/
+
+// shaman imp file.ssf -t sha256sum
+
+// jon@users-MacBook-Pro shaman % find * -name "*.go"  -type f | xargs sha256sum
+// 86c204da589803f499481c7b2184d2761e3094eb2ae746273553238eba47f6ba  cmd/rename.go
+// e5b82a8053748856bffe87fe6243fcc609939a7ea262d195da29972957079867  cmd/triplex.go
+// c6cdb3d4acc1ef786c0d9ade585b2c9b14bbc7df16e217b4613dfd0a6f7867ac  cmd/generate.go
+// 4926fc3e71abfe4e6f668c383ac1de88a0d1037b3dbbb5626d42aa513fd49ffa  cmd/whereis.go
+// e546bba425f1c4b6acb119524c6c960b4b476f5b6df95400fb58e643b5e8fff9  cmd/duplicates.go
+
+// find * -name "*.go"  -type f | xargs sha256sum > code.sha256
+// jon@users-MacBook-Pro shaman % sha256sum -c code.sha256
+// cmd/rename.go: OK
+// cmd/triplex.go: OK
+// cmd/generate.go: OK
+// cmd/whereis.go: OK
+
 func sum(args []string) {
 	num, files, found := getSSFs(args)
 	if num > 1 {
