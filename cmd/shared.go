@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // ----------------------- Global variables (shared across 'cmd' package)
@@ -34,6 +35,9 @@ var cli_incsha bool = false    // Include the SHA on delete listings
 
 var amWriting bool           // Whether writing
 var dupes = map[string]int{} // duplicate scoreboard (collected during walk)
+
+var cli_count uint = 10
+var cli_discard string = ""
 
 // ----------------------- General
 
@@ -423,4 +427,96 @@ func sshScoreboardReadMapMap(multiple map[string]bool, fn string, first map[stri
 		}
 	}
 	return len(first), tm
+}
+
+// ----------------------- "Topper" functions
+
+// globs
+var topKeys []string  // that which we sort on
+var topIdens []string // identifier block
+var topNames []string // reporting name
+var topDupes []int    // duplicate count
+var topDupeUsed bool  // whether we use dupes
+var topDepth int      // size of the table (N)
+
+// set up topper (can be size or date)
+func topInit(n int, useDupe bool, defaultKey string) {
+	topDepth = n
+	topKeys = make([]string, n)  // that which we sort on
+	topIdens = make([]string, n) // identifier block
+	topNames = make([]string, n) // reporting name
+	topDupes = make([]int, n)    // duplicate count
+	topDupeUsed = useDupe
+
+	for x := 0; x < n; x++ {
+		topKeys[x] = defaultKey
+		topNames[x] = "(no entry)"
+		topIdens[x] = ""
+		topDupes[x] = 0
+	}
+}
+
+func topAdd(key string, id string, name string) string {
+	// do conditional dupes later
+
+	// quickly check for duplication
+	for x := 0; x < topDepth; x++ {
+		if topIdens[x] == id {
+			topDupes[x]++
+			return topKeys[topDepth-1]
+		}
+	}
+
+	// perform ascending insertion
+	// fmt.Println("Want to insert", size, "into", sizes)
+	pos := topDepth - 2 // "the row above the end of table"
+	for pos >= 0 {
+		// fmt.Print("CHK", size, "<", sizes[pos], " (pos=", pos, ")\n")
+
+		if key < topKeys[pos] {
+			// fmt.Print("\n", "BREAK: ", size, "<", sizes[pos], " pos=", pos, "\n")
+			break
+		}
+
+		// shift content down
+		// fmt.Print("/ roll ", pos, "to", pos+1)
+		topKeys[pos+1] = topKeys[pos]
+		topNames[pos+1] = topNames[pos]
+		topIdens[pos+1] = topIdens[pos]
+		topDupes[pos+1] = topDupes[pos]
+		pos--
+	}
+
+	// record insertion
+	pos++
+	// fmt.Printf("Insert %s at %d\n", size, pos)
+	topKeys[pos] = key
+	topNames[pos] = name
+	topIdens[pos] = id
+	topDupes[pos] = 1
+
+	// return threshold (caller can reject without Adding)
+	return topKeys[topDepth-1]
+}
+
+func topReportBySize() {
+	fmt.Println("TOP", topDepth, "BY SIZE")
+	fmt.Println("POS   HEX SIZE   -----SIZE-----   #  FILENAME")
+	var decnum int64 = 0
+	for x := 0; x < topDepth; x++ {
+		decnum, _ = strconv.ParseInt(topKeys[x], 16, 0)
+		//fmt.Printf("%2d:  %s%12d %3d  %s\n", x+1, sizes[x], decnum, dupes[x], names[x])
+		fmt.Printf("%2d:  %s%16s %3d  %s\n", x+1, topKeys[x], intAsStringWithCommas(decnum), topDupes[x], topNames[x])
+	}
+}
+
+func topReportByDate() {
+	fmt.Println("TOP", topDepth, "BY DATE")
+	fmt.Println("POS  HEX DATE   -------------DATE------------   FILENAME")
+	var decnum int64 = 0
+	for x := 0; x < topDepth; x++ {
+		decnum, _ = strconv.ParseInt(topKeys[x], 16, 0)
+		t := time.Unix(decnum, 0)
+		fmt.Printf("%2d:  %s%32s   %s\n", x+1, topKeys[x], t, topNames[x])
+	}
 }
