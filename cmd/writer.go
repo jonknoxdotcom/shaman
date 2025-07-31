@@ -23,8 +23,17 @@ var nunc int64 // unchanged
 var dot int    // dot ticker
 
 func writeInit(fnw string) *bufio.Writer {
-	var w *bufio.Writer // buffer writer (local!)
+	// progress counters (for future, in case we launch two write sessions)
+	tf = 0
+	tb = 0
+	nnew = 0
+	nchg = 0
+	ndel = 0
+	nunc = 0
+	dot = 0
 
+	// buffer
+	var w *bufio.Writer // buffer writer (local!)
 	if fnw != "" {
 		// write to file
 		//var err error
@@ -32,12 +41,10 @@ func writeInit(fnw string) *bufio.Writer {
 		if err != nil {
 			abort(4, "Cannot create file "+fnw)
 		}
-
 		w = bufio.NewWriterSize(fwh, 64*1024)
-
 	} else {
 		// write to stdout
-		w = bufio.NewWriterSize(os.Stdout, 32) // more 'real time'
+		w = bufio.NewWriterSize(os.Stdout, 512) // more 'real time'
 	}
 
 	return w
@@ -45,6 +52,11 @@ func writeInit(fnw string) *bufio.Writer {
 
 // verbosity: 0=nothing, 1=dots, 2=explanation line
 func writeRecord(w *bufio.Writer, amWriting bool, verbosity int, tag string, shab64 string, modt string, size string, name string, flags string) {
+	//if len(shab64) != 43 || len(modt) != 8 || len(size) < 4 {
+	// if tag != "U" {
+	// 	fmt.Println(tag, len(shab64), len(modt), len(size), name)
+	// }
+
 	// type and counters
 	msg := ""
 	trail := ""
@@ -73,7 +85,7 @@ func writeRecord(w *bufio.Writer, amWriting bool, verbosity int, tag string, sha
 		msg = "  N/C: " + name + " (verified)"
 		nunc++
 	case "D":
-		// Deleted
+		// Deleted - does not produce record
 		msg = "  Del: " + name
 		ndel++
 	default:
@@ -92,7 +104,7 @@ func writeRecord(w *bufio.Writer, amWriting bool, verbosity int, tag string, sha
 	}
 
 	// pushing to output buffer
-	if amWriting {
+	if amWriting && tag != "D" {
 		if shab64 == "" {
 			// lazy hash
 			_, shab64 = getFileSha256(name) // horrible - to be resolved

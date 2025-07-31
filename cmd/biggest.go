@@ -40,6 +40,17 @@ func init() {
 // ----------------------- "Biggest" (largest) function below this line -----------------------
 
 func big(args []string) {
+	// fmt.Println("'" + intAsStringWithCommas(123) + "'")
+	// fmt.Println("'" + intAsStringWithCommas(1234) + "'")
+	// fmt.Println("'" + intAsStringWithCommas(12345) + "'")
+	// fmt.Println("'" + intAsStringWithCommas(123456) + "'")
+	// fmt.Println("'" + intAsStringWithCommas(1234567) + "'")
+	// fmt.Println("'" + intAsStringWithCommas(12345678) + "'")
+	// fmt.Println("'" + intAsStringWithCommas(123456789) + "'")
+	// fmt.Println("'" + intAsStringWithCommas(1234567890) + "'")
+	// fmt.Println("'" + intAsStringWithCommas(12345678901) + "'")
+	// fmt.Println("'" + intAsStringWithCommas(123456789012) + "'")
+
 	// Make sure we have a single input file that exists / error appropriately
 	num, files, found := getSSFs(args)
 	slog.Debug("cli handler", "num", num, "files", files, "found", found)
@@ -78,11 +89,13 @@ func big(args []string) {
 
 	var s string
 	var thresh string = "00000000"
+	var lineno int
 	scanner := bufio.NewScanner(r)
 
 SCANLOOP:
 	for scanner.Scan() {
 		s = scanner.Text()
+		lineno++
 		if len(s) == 0 || s[0:1] == "#" {
 			// drop comments or empty lines
 			continue
@@ -90,6 +103,10 @@ SCANLOOP:
 
 		// check size with least kerfuffle
 		pos1 := strings.Index(s, " ")
+		if pos1 == -1 || pos1 < 55 {
+			fmt.Printf("Skipping line %d - Invalid format (pos %d)\n", lineno, pos1)
+			continue
+		}
 		temp := "000000" + s[51:pos1]
 		size := temp[len(temp)-10:]
 		if size < thresh {
@@ -150,10 +167,11 @@ SCANLOOP:
 	}
 
 	fmt.Println("TOP", N, "BY SIZE")
-	fmt.Println("POS   HEX SIZE ----SIZE----   #  FILENAME")
+	fmt.Println("POS   HEX SIZE   -----SIZE-----   #  FILENAME")
 	var decnum int64 = 0
 	for x := 0; x < N; x++ {
 		decnum, _ = strconv.ParseInt(sizes[x], 16, 0)
-		fmt.Printf("%2d:  %s%12d %3d  %s\n", x+1, sizes[x], decnum, dupes[x], names[x])
+		//fmt.Printf("%2d:  %s%12d %3d  %s\n", x+1, sizes[x], decnum, dupes[x], names[x])
+		fmt.Printf("%2d:  %s%16s %3d  %s\n", x+1, sizes[x], intAsStringWithCommas(decnum), dupes[x], names[x])
 	}
 }

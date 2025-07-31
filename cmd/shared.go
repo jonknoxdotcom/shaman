@@ -51,6 +51,36 @@ func abort(rc int, reason string) {
 	os.Exit(rc)
 }
 
+func bashEscape(fn string) string {
+	fn = strings.Replace(fn, "\"", "\\\"", -1)
+	fn = strings.Replace(fn, "$", "\\$", -1)
+	fn = strings.Replace(fn, "~", "\\~", -1)
+	return fn
+}
+
+func intAsStringWithCommas(i int64) string {
+	s := fmt.Sprintf("%d", i)
+	switch true {
+	case i < 1e3:
+		return s
+	case i < 1e6:
+		x := len(s)
+		return s[0:x-3] + "," + s[x-3:]
+	case i < 1e9:
+		x := len(s)
+		return s[0:x-6] + "," + s[x-6:x-3] + "," + s[x-3:]
+	case i < 1e12:
+		x := len(s)
+		return s[0:x-9] + "," + s[x-9:x-6] + "," + s[x-6:x-3] + "," + s[x-3:]
+	case i < 1e15:
+		return "X" + s
+	}
+	//15,103,984,154
+	return s
+}
+
+// ----------------------- Functions that process files
+
 // Return a list of verified SSFs. **FIXME**
 func getSSFs(flist []string) (int, []string, []bool) {
 	var ssflist []string
@@ -301,13 +331,6 @@ func ssfScoreboardDupRead(fn string, m map[string]bool) (int, int) {
 	}
 
 	return len(m), multi
-}
-
-func bashEscape(fn string) string {
-	fn = strings.Replace(fn, "\"", "\\\"", -1)
-	fn = strings.Replace(fn, "$", "\\$", -1)
-	fn = strings.Replace(fn, "~", "\\~", -1)
-	return fn
 }
 
 // Split a line from an SSF into constituent fields (no hex to dec conversion) / empty str on error

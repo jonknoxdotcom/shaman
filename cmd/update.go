@@ -110,7 +110,7 @@ func upd(args []string) {
 
 	// for now, perform copy (as a test) using scanner on 'r' buffer, max line is 64k
 	var lineno int = 0 // needed for error reporting on .ssf file corruptions
-	var verbosity int = 2
+	var verbosity int = 1
 	if cli_verbose {
 		verbosity = 2
 	}
@@ -195,7 +195,7 @@ func upd(args []string) {
 
 		// 4/5 The file stream is before current, so del 'not seen' ssf file (if non-empty)
 		if ssf_name != "" && trip_name > ssf_name {
-			writeRecord(w, amWriting, verbosity, "D", "", "", "", trip_name, "") // verified unchanged
+			writeRecord(w, amWriting, verbosity, "D", "", "", "", ssf_name, "") // verified unchanged
 		}
 	}
 
