@@ -30,42 +30,27 @@ var biggestCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(biggestCmd)
 
-	biggestCmd.Flags().UintVarP(&cli_count, "count", "c", 10, "Specify number of files to show (default: 10)")
-
+	biggestCmd.Flags().IntVarP(&cli_count, "count", "c", 20, "Specify number of files to show (default: 20)")
 }
 
 // ----------------------- "Biggest" (largest) function below this line -----------------------
 
-func big(args []string) {
-	// Make sure we have a single input file that exists / error appropriately
-	num, files, found := getSSFs(args)
-	slog.Debug("cli handler", "num", num, "files", files, "found", found)
-	switch true {
-	case num > 8:
-		abort(8, "Too many .ssf files specified - eight is enough")
-	case num < 1:
-		abort(9, "Need an SSF file to perform largest file check")
-	case !found[0]:
-		abort(6, "Input SSF file '"+files[0]+"' does not exist")
-	}
-	fn := files[0]
-
-	// We get the top 50
-	var N int = 50
-	var thresh string = "00000000"
-	topInit(N, true, thresh)
-
-	var r *os.File
+func bigFile(fn string, prefix string) int {
+	// open file
 	r, err := os.Open(fn)
 	if err != nil {
-		abort(4, "Can't open "+fn+" - stuck!")
+		fmt.Println("Unexpected problem opening file " + fn)
+		return 0
 	}
 	defer r.Close()
 
+	// get the threshold
+	thresh := topKeys[topDepth-1]
+
+	// process lines
 	var s string
 	var lineno int
 	scanner := bufio.NewScanner(r)
-
 	for scanner.Scan() {
 		s = scanner.Text()
 		lineno++
@@ -90,10 +75,50 @@ func big(args []string) {
 		// get rest of fields
 		id := s[0:pos1]
 		pos2 := strings.Index(s, " :")
-		name := s[pos2+2:]
-		// modtime = s[43:51]
+		name := prefix + s[pos2+2:]
 
 		thresh = topAdd(key, id, name)
 	}
-	topReportBySize()
+	return lineno
+}
+
+func big(args []string) {
+	// Make sure we have a single input file that exists / error appropriately
+	num, files, found := getSSFs(args)
+	slog.Debug("cli handler", "num", num, "files", files, "found", found)
+	switch true {
+	case num > 8:
+		abort(8, "Too many .ssf files specified - eight is enough")
+	case num < 1:
+		abort(9, "Need an SSF file to perform largest file check")
+	case !found[0]:
+		abort(6, "Input SSF file '"+files[0]+"' does not exist")
+	}
+
+	// We get the top 50
+	var thresh string = "0000000000"
+	if cli_count > 999 {
+		cli_count = 999
+	}
+	title := fmt.Sprintf("TOP %d BY SIZE", cli_count)
+	topInit(cli_count, true, thresh)
+
+	switch true {
+	case num == 0: // no files given - use local directory
+		title += " in current working directory"
+
+	case num == 1:
+		lines := bigFile(files[0], "")
+		fmt.Printf("Found %d records\n", lines)
+	case num > 1:
+		title += " for "
+		for _, fn := range files {
+			lines := bigFile(fn, fn+": ")
+			title += fmt.Sprintf(" %s (%d)", fn, lines)
+			fmt.Printf("Found %d records in %s\n", lines, fn)
+		}
+	default:
+	}
+
+	topReportBySize(title)
 }

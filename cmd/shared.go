@@ -36,7 +36,7 @@ var cli_incsha bool = false    // Include the SHA on delete listings
 var amWriting bool           // Whether writing
 var dupes = map[string]int{} // duplicate scoreboard (collected during walk)
 
-var cli_count uint = 10
+var cli_count int = 10
 var cli_discard string = ""
 
 // ----------------------- General
@@ -499,8 +499,8 @@ func topAdd(key string, id string, name string) string {
 	return topKeys[topDepth-1]
 }
 
-func topReportBySize() {
-	fmt.Println("TOP", topDepth, "BY SIZE")
+func topReportBySize(title string) {
+	fmt.Println(title)
 	fmt.Println("POS   HEX SIZE   -----SIZE-----   #  FILENAME")
 	var decnum int64 = 0
 	for x := 0; x < topDepth; x++ {
@@ -510,8 +510,8 @@ func topReportBySize() {
 	}
 }
 
-func topReportByDate() {
-	fmt.Println("TOP", topDepth, "BY DATE")
+func topReportByDate(title string) {
+	fmt.Println(title)
 	fmt.Println("POS  HEX DATE   -------------DATE------------   FILENAME")
 	var decnum int64 = 0
 	for x := 0; x < topDepth; x++ {

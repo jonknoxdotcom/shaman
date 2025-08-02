@@ -30,9 +30,8 @@ var latestCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(latestCmd)
 
-	latestCmd.Flags().UintVarP(&cli_count, "count", "", 10, "Specify number of files to show (default: 10)")
+	latestCmd.Flags().IntVarP(&cli_count, "count", "", 20, "Specify number of files to show (default: 20)")
 	latestCmd.Flags().StringVarP(&cli_discard, "discard", "", "", "Path to exclude from results")
-
 }
 
 // ----------------------- "Latest" function below this line -----------------------
@@ -99,5 +98,7 @@ func lat(args []string) {
 
 		thresh = topAdd(key, id, name)
 	}
-	topReportByDate()
+
+	title := fmt.Sprintf("TOP %d BY DATE", topDepth)
+	topReportByDate(title)
 }
