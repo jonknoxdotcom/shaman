@@ -74,11 +74,11 @@ func est(args []string) {
 	}
 
 	// Totals
-	fmt.Printf("Total files:  %d", total_files)
+	fmt.Printf("Total files:  %s", intAsStringWithCommas(total_files))
 	fmt.Println()
-	fmt.Printf("Total bytes:  %d", total_bytes)
+	fmt.Printf("Total bytes:  %s", intAsStringWithCommas(total_bytes))
 	fmt.Println()
-	fmt.Printf("Largest file: %d %s", largest, mem_large)
+	fmt.Printf("Largest file: %s %s", intAsStringWithCommas(largest), mem_large)
 	fmt.Println()
 	fmt.Printf("Longest name: %d %s", longest, mem_long)
 	fmt.Println()
