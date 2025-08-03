@@ -38,6 +38,7 @@ var dupes = map[string]int{} // duplicate scoreboard (collected during walk)
 
 var cli_count int = 10
 var cli_discard string = ""
+var cli_ellipsis bool = false
 
 // ----------------------- General
 
@@ -473,7 +474,7 @@ func topAdd(key string, id string, name string) string {
 	for pos >= 0 {
 		// fmt.Print("CHK", size, "<", sizes[pos], " (pos=", pos, ")\n")
 
-		if key < topKeys[pos] {
+		if key <= topKeys[pos] { // <= required to get alpha on non-SHA search
 			// fmt.Print("\n", "BREAK: ", size, "<", sizes[pos], " pos=", pos, "\n")
 			break
 		}
@@ -502,11 +503,18 @@ func topAdd(key string, id string, name string) string {
 func topReportBySize(title string) {
 	fmt.Println(title)
 	fmt.Println("POS   HEX SIZE   -----SIZE-----   #  FILENAME")
-	var decnum int64 = 0
+	var decNum int64 = 0
+	var lastNum int64 = 0
 	for x := 0; x < topDepth; x++ {
-		decnum, _ = strconv.ParseInt(topKeys[x], 16, 0)
-		//fmt.Printf("%2d:  %s%12d %3d  %s\n", x+1, sizes[x], decnum, dupes[x], names[x])
-		fmt.Printf("%2d:  %s%16s %3d  %s\n", x+1, topKeys[x], intAsStringWithCommas(decnum), topDupes[x], topNames[x])
+		decNum, _ = strconv.ParseInt(topKeys[x], 16, 0)
+		if !cli_ellipsis || decNum != lastNum {
+			// print full line every time
+			fmt.Printf("%2d:  %10s%16s %3d  %s\n", x+1, topKeys[x], intAsStringWithCommas(decNum), topDupes[x], topNames[x])
+		} else {
+			// use ellipsis to highlight repeated sizes/hashes
+			fmt.Printf("%2d:  %10s%16s %3d  %s\n", x+1, "   ....   ", "....     ", topDupes[x], topNames[x])
+		}
+		lastNum = decNum
 	}
 }
 

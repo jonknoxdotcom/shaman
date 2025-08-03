@@ -19,7 +19,7 @@ var biggestCmd = &cobra.Command{
 	Short:   "Show the names of the largest files",
 	Long:    `Finds the top-10 largest files in an .ssf file`,
 	Aliases: []string{"big", "largest", "lar"},
-	Args:    cobra.MaximumNArgs(10), // handle in code
+	Args:    cobra.MaximumNArgs(99), // handle in code
 	GroupID: "G2",
 
 	Run: func(cmd *cobra.Command, args []string) {
@@ -31,6 +31,7 @@ func init() {
 	rootCmd.AddCommand(biggestCmd)
 
 	biggestCmd.Flags().IntVarP(&cli_count, "count", "c", 20, "Specify number of files to show (default: 20)")
+	biggestCmd.Flags().BoolVarP(&cli_ellipsis, "ellipsis", "e", false, "Replace repeated key with '...'")
 }
 
 // ----------------------- "Biggest" (largest) function below this line -----------------------
@@ -61,11 +62,16 @@ func bigFile(fn string, prefix string) int {
 
 		// check size with least kerfuffle
 		pos1 := strings.Index(s, " ")
+
+		if pos1 == -1 && len(s) == 43 {
+			fmt.Printf("Seeing anonymous records in %s - skipping\n", fn)
+			return 0
+		}
 		if pos1 == -1 || pos1 < 55 {
-			fmt.Printf("Skipping line %d - Invalid format (pos %d)\n", lineno, pos1)
+			fmt.Printf("Skipping line %d - Invalid format (position %d, length %d)\n", lineno, pos1, len(s))
 			continue
 		}
-		temp := "000000" + s[51:pos1]
+		temp := "000000" + s[51:pos1] // pad - better way?
 		key := temp[len(temp)-10:]
 		if key < thresh {
 			// off the bottom - no need to do a Add attempt
@@ -82,16 +88,46 @@ func bigFile(fn string, prefix string) int {
 	return lineno
 }
 
+func bigLocal(path string) int {
+	// create tree walker channel
+	fileQueue := make(chan triplex, 4096)
+	go func() {
+		defer close(fileQueue)
+		walkTreeToChannel(path, fileQueue)
+	}()
+
+	// get the threshold
+	thresh := topKeys[topDepth-1]
+
+	// process lines
+	lineno := 0
+	for filerec := range fileQueue {
+		lineno++
+		key := fmt.Sprintf("%010x", filerec.size)
+		if key < thresh {
+			// off the bottom - no need to do a Add attempt
+			continue
+		}
+
+		// get rest of fields
+		id := filerec.filename
+		name := filerec.filename
+
+		thresh = topAdd(key, id, name)
+	}
+	return lineno
+}
+
 func big(args []string) {
 	// Make sure we have a single input file that exists / error appropriately
 	num, files, found := getSSFs(args)
 	slog.Debug("cli handler", "num", num, "files", files, "found", found)
 	switch true {
-	case num > 8:
-		abort(8, "Too many .ssf files specified - eight is enough")
-	case num < 1:
+	case num > 20:
+		abort(8, "Too many .ssf files specified - twenty is enough")
+	case num < 0:
 		abort(9, "Need an SSF file to perform largest file check")
-	case !found[0]:
+	case num >= 1 && !found[0]:
 		abort(6, "Input SSF file '"+files[0]+"' does not exist")
 	}
 
@@ -105,7 +141,9 @@ func big(args []string) {
 
 	switch true {
 	case num == 0: // no files given - use local directory
-		title += " in current working directory"
+		title += " in current directory (dupes not identified)"
+		lines := bigLocal(".")
+		fmt.Printf("Found %d files\n", lines)
 
 	case num == 1:
 		lines := bigFile(files[0], "")
