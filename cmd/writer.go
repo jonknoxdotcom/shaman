@@ -9,18 +9,20 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // ----------------------- Shared writer function -----------------------
 
 // counters
-var tf int64   // total files
-var tb int64   // total bytes
-var nnew int64 // new records written
-var nchg int64 // changed record written
-var ndel int64 // deleted (dropped)
-var nunc int64 // unchanged
-var dot int    // dot ticker
+var tf int64        // total files
+var tb int64        // total bytes
+var nnew int64      // new records written
+var nchg int64      // changed record written
+var ndel int64      // deleted (dropped)
+var nunc int64      // unchanged
+var dot int         // dot ticker
+var flushTime int64 // time of last buffer flush
 
 func writeInit(fnw string) *bufio.Writer {
 	// progress counters (for future, in case we launch two write sessions)
@@ -46,20 +48,17 @@ func writeInit(fnw string) *bufio.Writer {
 		// write to stdout
 		w = bufio.NewWriterSize(os.Stdout, 512) // more 'real time'
 	}
+	flushTime = time.Now().Unix()
 
 	return w
 }
 
 // verbosity: 0=nothing, 1=dots, 2=explanation line
 func writeRecord(w *bufio.Writer, amWriting bool, verbosity int, tag string, shab64 string, modt string, size string, name string, flags string) {
-	//if len(shab64) != 43 || len(modt) != 8 || len(size) < 4 {
-	// if tag != "U" {
-	// 	fmt.Println(tag, len(shab64), len(modt), len(size), name)
-	// }
-
 	// type and counters
 	msg := ""
 	trail := ""
+	nbytes, _ := strconv.ParseInt(size, 16, 0) // assume good
 	switch tag {
 	case "N":
 		msg = "  New: " + name
@@ -100,6 +99,9 @@ func writeRecord(w *bufio.Writer, amWriting bool, verbosity int, tag string, sha
 			fmt.Print(".")
 		}
 	case verbosity == 2 && tag != "U":
+		if nbytes > 1*1024*1024 {
+			trail += " (" + intAsStringWithCommas(int64(nbytes/(1024*1024))) + "MB)"
+		}
 		fmt.Println("  " + msg + trail)
 	}
 
@@ -111,14 +113,13 @@ func writeRecord(w *bufio.Writer, amWriting bool, verbosity int, tag string, sha
 		}
 		fmt.Fprintln(w, shab64+modt+size+" :"+name)
 		tf++
-		nbytes, _ := strconv.ParseInt(size, 16, 0) // assume good
 		tb += nbytes
 
-		// flush control
-		//fmt.Println("Totals:", tf, tb)
-		if tf%500 == 0 {
-			//fmt.Println("Flushing output buffer")
+		// flush control - every minute
+		if time.Now().Unix() > flushTime+60 {
+			//fmt.Println("Flushing output buffer!")
 			w.Flush()
+			flushTime = time.Now().Unix()
 		}
 	}
 }
