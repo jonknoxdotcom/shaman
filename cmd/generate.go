@@ -34,7 +34,7 @@ func init() {
 	rootCmd.AddCommand(generateCmd)
 
 	generateCmd.Flags().StringVarP(&cli_path, "path", "p", "", "Path to directory to scan (default is current directory)")
-	generateCmd.Flags().IntVarP(&cli_anon, "anonymous", "a", 0, "Anonymisation level 0..5")
+	generateCmd.Flags().IntVarP(&cli_format, "format", "f", 5, "Format/anonymisation level 0..5")
 	generateCmd.Flags().BoolVarP(&cli_dupes, "dupes", "d", false, "Whether to show dupes (as comments) on completion")
 	generateCmd.Flags().BoolVarP(&cli_grand, "grand-totals", "g", false, "Display grand totals of bytes/files on completion")
 	generateCmd.Flags().BoolVarP(&cli_verbose, "verbose", "v", false, "Give running commentary of update")
@@ -106,9 +106,9 @@ func gen(args []string) {
 
 		_, sha_b64 := getFileSha256(filerec.filename)
 
-		modt := fmt.Sprintf("%010x", filerec.modified)
+		modt := fmt.Sprintf("%8x", filerec.modified)
 		size := fmt.Sprintf("%04x", filerec.size)
-		writeRecord(w, true, cli_anon, verbosity, "N", sha_b64, modt, size, filerec.filename, "")
+		writeRecord(w, true, cli_format, verbosity, "N", sha_b64, modt, size, filerec.filename, "")
 
 		// stats and ticks (dot every 100, flush every 500)
 		total_bytes += filerec.size

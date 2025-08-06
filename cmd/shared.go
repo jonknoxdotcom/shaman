@@ -19,7 +19,7 @@ import (
 // ----------------------- Global variables (shared across 'cmd' package)
 
 var cli_path string = ""       // Path to folder where scan will be performed [cobra]
-var cli_anon int = 0           // Anonymisation level (1=sha, 2=sha+mod, 3=sha+mod+size, 4=+name, 0/5+=switch off/allow all data)
+var cli_format int = 5         // Format /anonymisation (0=sha256, 1=sha, 2=sha+mod, 3=sha+mod+size, 4=+name, 5=allow all data)
 var cli_dupes bool = false     // Show duplicates as comments at end of run
 var cli_grand bool = false     // Show grand total of files/bytes total at end
 var cli_rehash bool = false    // Perform deep integrity check by regenerating file hash and comparing (slow)
@@ -138,6 +138,11 @@ func getFileSha256(fn string) ([]byte, string) {
 	sha_b64 = sha_b64[0:43]
 
 	return sha_bin, sha_b64
+}
+
+func shaBase64ToShaBinary(sha_b64 string) []byte {
+	shabin, _ := b64.StdEncoding.DecodeString(sha_b64 + "=")
+	return shabin
 }
 
 // ----------------------- Reporting

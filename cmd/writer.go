@@ -54,7 +54,7 @@ func writeInit(fnw string) *bufio.Writer {
 }
 
 // verbosity: 0=nothing, 1=dots, 2=explanation line
-func writeRecord(w *bufio.Writer, amWriting bool, anon int, verbosity int, tag string, shab64 string, modt string, size string, name string, flags string) {
+func writeRecord(w *bufio.Writer, amWriting bool, format int, verbosity int, tag string, shab64 string, modt string, size string, name string, flags string) {
 	// type and counters
 	msg := ""
 	trail := ""
@@ -111,17 +111,26 @@ func writeRecord(w *bufio.Writer, amWriting bool, anon int, verbosity int, tag s
 			// lazy hash
 			_, shab64 = getFileSha256(name) // horrible - to be resolved
 		}
-		switch anon {
+		//fmt.Println(format)
+		switch format {
+		case 0:
+			// md5sum compatibility mode
+			shabin := shaBase64ToShaBinary(shab64)
+			fmt.Fprintln(w, fmt.Sprintf("%64x", shabin)+"  "+name)
 		case 1:
+			// anonymise to SHA256 only
 			fmt.Fprintln(w, shab64)
 		case 2:
+			// anonymise to SHA256 + Modify time only
 			fmt.Fprintln(w, shab64+modt)
 		case 3:
+			// anonymise to SHA256 + Modify time + Size (full identifier) only
 			fmt.Fprintln(w, shab64+modt+size)
 		case 4:
+			// generate identifier + name (drop annotations)
 			fmt.Fprintln(w, shab64+modt+size+" :"+name)
 		default:
-			// *FIXME* need to add metadata
+			// 5+ - full SSF record
 			fmt.Fprintln(w, shab64+modt+size+" :"+name)
 		}
 
