@@ -54,7 +54,7 @@ func writeInit(fnw string) *bufio.Writer {
 }
 
 // verbosity: 0=nothing, 1=dots, 2=explanation line
-func writeRecord(w *bufio.Writer, amWriting bool, verbosity int, tag string, shab64 string, modt string, size string, name string, flags string) {
+func writeRecord(w *bufio.Writer, amWriting bool, anon int, verbosity int, tag string, shab64 string, modt string, size string, name string, flags string) {
 	// type and counters
 	msg := ""
 	trail := ""
@@ -111,7 +111,20 @@ func writeRecord(w *bufio.Writer, amWriting bool, verbosity int, tag string, sha
 			// lazy hash
 			_, shab64 = getFileSha256(name) // horrible - to be resolved
 		}
-		fmt.Fprintln(w, shab64+modt+size+" :"+name)
+		switch anon {
+		case 1:
+			fmt.Fprintln(w, shab64)
+		case 2:
+			fmt.Fprintln(w, shab64+modt)
+		case 3:
+			fmt.Fprintln(w, shab64+modt+size)
+		case 4:
+			fmt.Fprintln(w, shab64+modt+size+" :"+name)
+		default:
+			// *FIXME* need to add metadata
+			fmt.Fprintln(w, shab64+modt+size+" :"+name)
+		}
+
 		tf++
 		tb += nbytes
 

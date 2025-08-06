@@ -112,16 +112,7 @@ func sum(args []string) {
 	var total_bytes int64
 	for filerec := range fileQueue {
 		_, sha_b64 := getFileSha256(filerec.filename)
-
-		outbuf := sha_b64
-		if !cli_anon {
-			outbuf += fmt.Sprintf("%x%04x :%s", filerec.modified, filerec.size, filerec.filename)
-		}
-		fmt.Fprintln(w, outbuf)
-
-		if cli_dupes {
-			dupes[sha_b64] = dupes[sha_b64] + 1
-		}
+		fmt.Fprintln(w, sha_b64+" "+filerec.filename)
 
 		// stats and ticks (dot every 100, flush every 500)
 		total_bytes += filerec.size

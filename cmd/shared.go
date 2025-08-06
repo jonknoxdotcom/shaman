@@ -19,7 +19,7 @@ import (
 // ----------------------- Global variables (shared across 'cmd' package)
 
 var cli_path string = ""       // Path to folder where scan will be performed [cobra]
-var cli_anon bool = false      // Anonymise the output (discard file, modified time and size)
+var cli_anon int = 0           // Anonymisation level (1=sha, 2=sha+mod, 3=sha+mod+size, 4=+name, 0/5+=switch off/allow all data)
 var cli_dupes bool = false     // Show duplicates as comments at end of run
 var cli_grand bool = false     // Show grand total of files/bytes total at end
 var cli_rehash bool = false    // Perform deep integrity check by regenerating file hash and comparing (slow)
@@ -38,6 +38,10 @@ var dupes = map[string]int{} // duplicate scoreboard (collected during walk)
 var cli_count int = 10
 var cli_discard string = ""
 var cli_ellipsis bool = false
+var cli_nodot bool = false
+
+var cli_unfix string = ""
+var cli_prefix string = ""
 
 // ----------------------- General
 

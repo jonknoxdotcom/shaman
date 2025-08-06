@@ -66,7 +66,7 @@ func ren(args []string) {
 		if cli_cwd && strings.Index(fn, "/") > 0 {
 			continue
 		}
-		fmt.Println(fn)
+		//fmt.Println(fn)
 		source := "\"" + strings.Replace(fn, "\"", "\\\"", -1) + "\""
 		dest := source
 		if cli_flatten {
