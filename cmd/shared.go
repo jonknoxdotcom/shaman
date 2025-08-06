@@ -437,3 +437,59 @@ func sshScoreboardReadMapMap(multiple map[string]bool, fn string, first map[stri
 	}
 	return len(first), tm
 }
+
+// Consolidation functions
+
+func ssfCollectRead(fnr string, hits map[string]string, format int) (int, int) {
+	var r *os.File
+	r, err := os.Open(fnr)
+	if err != nil {
+		abort(4, "Can't open "+fnr+" - stuck!")
+	}
+	defer r.Close()
+
+	var rows int
+	var s string
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		s = scanner.Text()
+		if len(s) == 0 || s[0:1] == "#" {
+			// drop comments or empty lines
+			continue
+		}
+
+		// get fields
+		_, shab64, modtime, size, _ := splitSSFLine(s)
+		if shab64 == "" {
+			fmt.Println("Ignoring corrupt line: " + s)
+			continue
+		}
+
+		switch format {
+		case 1:
+			// just the SHA
+			hits[shab64] = ""
+		case 2:
+			// record modtime
+			val, ok := hits[shab64]
+			if ok && val > modtime {
+				// don't overwrite if stored modtime is earlier
+				continue
+			}
+			hits[shab64] = modtime
+		case 3:
+			// record modtime and size
+			val, ok := hits[shab64]
+			if ok && val[0:8] > modtime {
+				// don't overwrite if stored modtime is earlier
+				continue
+			}
+			hits[shab64] = modtime + ":" + size
+		}
+
+		rows++
+	}
+
+	return len(hits), rows
+
+}
