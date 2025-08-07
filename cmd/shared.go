@@ -19,7 +19,7 @@ import (
 // ----------------------- Global variables (shared across 'cmd' package)
 
 var cli_path string = ""       // Path to folder where scan will be performed [cobra]
-var cli_format int = 5         // Format /anonymisation (0=sha256, 1=sha, 2=sha+mod, 3=sha+mod+size, 4=+name, 5=allow all data)
+var cli_format int = 0         // Format (0=default, 1=sha, 2=1+mod, 3=2+size, 4=3+name, 5=4+annotate, 6/7/8=unused, 9=sha256sum)
 var cli_dupes bool = false     // Show duplicates as comments at end of run
 var cli_grand bool = false     // Show grand total of files/bytes total at end
 var cli_rehash bool = false    // Perform deep integrity check by regenerating file hash and comparing (slow)
@@ -460,6 +460,7 @@ func ssfCollectRead(fnr string, hits map[string]string, format int) (int, int) {
 
 		// get fields
 		_, shab64, modtime, size, _ := splitSSFLine(s)
+		// fmt.Println(s, shab64, modtime, size)
 		if shab64 == "" {
 			fmt.Println("Ignoring corrupt line: " + s)
 			continue
@@ -472,7 +473,7 @@ func ssfCollectRead(fnr string, hits map[string]string, format int) (int, int) {
 		case 2:
 			// record modtime
 			val, ok := hits[shab64]
-			if ok && val > modtime {
+			if ok && val < modtime {
 				// don't overwrite if stored modtime is earlier
 				continue
 			}
@@ -480,16 +481,16 @@ func ssfCollectRead(fnr string, hits map[string]string, format int) (int, int) {
 		case 3:
 			// record modtime and size
 			val, ok := hits[shab64]
-			if ok && val[0:8] > modtime {
+			if ok && val[0:8] < modtime {
 				// don't overwrite if stored modtime is earlier
 				continue
 			}
-			hits[shab64] = modtime + ":" + size
+			// fmt.Println(shab64, modtime, size)
+			hits[shab64] = modtime + size
 		}
 
 		rows++
 	}
 
 	return len(hits), rows
-
 }

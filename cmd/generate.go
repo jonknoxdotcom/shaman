@@ -34,7 +34,7 @@ func init() {
 	rootCmd.AddCommand(generateCmd)
 
 	generateCmd.Flags().StringVarP(&cli_path, "path", "p", "", "Path to directory to scan (default is current directory)")
-	generateCmd.Flags().IntVarP(&cli_format, "format", "f", 5, "Format/anonymisation level 0..5")
+	generateCmd.Flags().IntVarP(&cli_format, "format", "f", 0, "Format/anonymisation level 1..5 or 9")
 	generateCmd.Flags().BoolVarP(&cli_dupes, "dupes", "d", false, "Whether to show dupes (as comments) on completion")
 	generateCmd.Flags().BoolVarP(&cli_grand, "grand-totals", "g", false, "Display grand totals of bytes/files on completion")
 	generateCmd.Flags().BoolVarP(&cli_verbose, "verbose", "v", false, "Give running commentary of update")
@@ -49,7 +49,12 @@ func gen(args []string) {
 	var w *bufio.Writer
 	var fn string = "" // Output file (for "" for stdout)
 	var ticker bool = true
+	var form int = 5 // format defaults to 5
 
+	// for update, the format default is 5 (full)
+	if cli_format != 0 {
+		form = cli_format
+	}
 	// process CLI
 	num, files, found := getSSFs(args)
 	slog.Debug("cli handler", "num", num, "files", files, "found", found)
@@ -64,7 +69,7 @@ func gen(args []string) {
 		fn = files[0]
 		ticker = false
 	case num == 1 && found[0]:
-		abort(6, "Output file '"+fn+"' already exists")
+		abort(6, "Output file '"+files[0]+"' already exists")
 	}
 
 	// find ends .ssf??
@@ -108,7 +113,7 @@ func gen(args []string) {
 
 		modt := fmt.Sprintf("%8x", filerec.modified)
 		size := fmt.Sprintf("%04x", filerec.size)
-		writeRecord(w, true, cli_format, verbosity, "N", sha_b64, modt, size, filerec.filename, "")
+		writeRecord(w, true, form, verbosity, "N", sha_b64, modt, size, filerec.filename, "")
 
 		// stats and ticks (dot every 100, flush every 500)
 		total_bytes += filerec.size

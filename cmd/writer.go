@@ -113,10 +113,6 @@ func writeRecord(w *bufio.Writer, amWriting bool, format int, verbosity int, tag
 		}
 		//fmt.Println(format)
 		switch format {
-		case 0:
-			// md5sum compatibility mode
-			shabin := shaBase64ToShaBinary(shab64)
-			fmt.Fprintln(w, fmt.Sprintf("%64x", shabin)+"  "+name)
 		case 1:
 			// anonymise to SHA256 only
 			fmt.Fprintln(w, shab64)
@@ -129,9 +125,16 @@ func writeRecord(w *bufio.Writer, amWriting bool, format int, verbosity int, tag
 		case 4:
 			// generate identifier + name (drop annotations)
 			fmt.Fprintln(w, shab64+modt+size+" :"+name)
+		case 5:
+			// full SSF record
+			fmt.Fprintln(w, shab64+modt+size+" :"+name)
+		case 9:
+			// md5sum compatibility mode
+			shabin := shaBase64ToShaBinary(shab64)
+			fmt.Fprintln(w, fmt.Sprintf("%64x", shabin)+"  "+name)
 		default:
 			// 5+ - full SSF record
-			fmt.Fprintln(w, shab64+modt+size+" :"+name)
+			abort(10, "Format not valid")
 		}
 
 		tf++
