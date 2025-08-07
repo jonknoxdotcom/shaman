@@ -43,6 +43,8 @@ var cli_nodot bool = false
 var cli_unfix string = ""
 var cli_prefix string = ""
 
+var cli_long bool = false // used by compare
+
 // ----------------------- General
 
 // Abnormal termination - break out of app, all internal fails are 10+

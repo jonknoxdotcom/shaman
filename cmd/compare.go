@@ -4,8 +4,11 @@ Copyright © 2025 Jon Knox <jon@k2x.io>
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"log/slog"
+	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -28,6 +31,7 @@ var compareCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(compareCmd)
 	compareCmd.Flags().BoolVarP(&cli_del_b, "del-b", "", false, "Generate 'rm' for files in B which are present in A")
+	compareCmd.Flags().BoolVarP(&cli_long, "long", "l", false, "Describe deletes in long form (in context)")
 }
 
 // ----------------------- Generate function below this line -----------------------
@@ -77,14 +81,59 @@ func com(args []string) {
 	}
 
 	// generate bash command to remove files in B that were in A
-	removalSlice := make([]string, 0, 10)                              // shas is the minimum size - likely to grow
-	rows = ssfSelectNameByScoreboard(files[1], overlap, &removalSlice) // not sure
-	rows = ssfSelectNameByScoreboard(files[1], overlap, &removalSlice) // not sure
-	rows = ssfSelectNameByScoreboard(files[1], overlap, &removalSlice) // not sure
-	slog.Debug("size of removal list", "rows", len(removalSlice))
+	if !cli_long {
+		// short form (just the overlaps in B)
+		removalSlice := make([]string, 0, 10)                              // shas is the minimum size - likely to grow
+		rows = ssfSelectNameByScoreboard(files[1], overlap, &removalSlice) // not sure
+		slog.Debug("size of removal list", "rows", len(removalSlice))
 
-	fmt.Printf("# Commands to delete %d overlapping files from %s\n", rows, files[1])
-	for _, fndel := range removalSlice {
-		fmt.Printf("rm \"%s\"\n", bashEscape(fndel))
+		fmt.Printf("# Commands to delete %d overlapping files from %s\n", rows, files[1])
+		for _, fndel := range removalSlice {
+			fmt.Printf("rm \"%s\"\n", bashEscape(fndel))
+		}
+	} else {
+		// long form (show all files in B, with the dupes prefixed with "rm"s)
+		var r *os.File
+		r, err := os.Open(files[1])
+		if err != nil {
+			abort(4, "Can't open "+files[1]+" - stuck!")
+		}
+		defer r.Close()
+
+		var s string
+		var lineno int
+		scanner := bufio.NewScanner(r)
+		for scanner.Scan() {
+			s = scanner.Text()
+			lineno++
+
+			// skip comments
+			if len(s) == 0 || s[0:1] == "#" {
+				// drop comments or empty lines
+				continue
+			}
+
+			// skip corrupted
+			pos1 := strings.Index(s, " ")
+			if pos1 == -1 || pos1 < 55 {
+				fmt.Printf("Skipping line %d - Invalid format (pos %d)\n", lineno, pos1)
+				continue
+			}
+
+			// get rest of fields
+			sha := s[0:43]
+			//id := s[0:pos1]
+			pos2 := strings.Index(s, " :")
+			name := s[pos2+2:]
+
+			// check for display vs delete
+			if overlap[sha] {
+				fmt.Printf("rm \"%s\"\n", bashEscape(name))
+			} else {
+				fmt.Printf("#   %s \n", bashEscape(name))
+			}
+
+		}
+
 	}
 }
