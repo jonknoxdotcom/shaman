@@ -100,6 +100,10 @@ func com(args []string) {
 		}
 		defer r.Close()
 
+		fmt.Println("#")
+		fmt.Println("# BASH DELETE SCRIPT FOR " + files[1])
+		fmt.Println("# Only files also present in " + files[0] + " show as 'rm'")
+		fmt.Println("#")
 		var s string
 		var lineno int
 		scanner := bufio.NewScanner(r)
