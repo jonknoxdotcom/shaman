@@ -18,12 +18,12 @@ import (
 
 // ----------------------- Global variables (shared across 'cmd' package)
 
-var cli_path string = ""       // Path to folder where scan will be performed [cobra]
-var cli_format int = 0         // Format (0=default, 1=sha, 2=1+mod, 3=2+size, 4=3+name, 5=4+annotate, 6/7/8=unused, 9=sha256sum)
-var cli_dupes bool = false     // Show duplicates as comments at end of run
-var cli_grand bool = false     // Show grand total of files/bytes total at end
-var cli_rehash bool = false    // Perform deep integrity check by regenerating file hash and comparing (slow)
-var cli_summary bool = false   // Summarise changes from an update, without generating new file
+var cli_path string = ""    // Path to folder where scan will be performed [cobra]
+var cli_format int = 0      // Format (0=default, 1=sha, 2=1+mod, 3=2+size, 4=3+name, 5=4+annotate, 6/7/8=unused, 9=sha256sum)
+var cli_dupes bool = false  // Show duplicates as comments at end of run
+var cli_grand bool = false  // Show grand total of files/bytes total at end
+var cli_rehash bool = false // Perform deep integrity check by regenerating file hash and comparing (slow)
+// var cli_summary bool = false   // Summarise changes from an update, without generating new file
 var cli_overwrite bool = false // Overwrite file used in update with updated version (if there are changes)
 var cli_verbose bool = false   // Provide verbose output (may have not effect)
 var cli_del_b bool = false     // Delete from B anything that is in A
@@ -32,7 +32,7 @@ var cli_flatten bool = false   // Whether to fold-down directories (using '--')
 var cli_refile bool = false    // Whether to put files into directories (using '--')
 var cli_incsha bool = false    // Include the SHA on delete listings
 
-var amWriting bool           // Whether writing
+// var amWriting bool           // Whether writing
 var dupes = map[string]int{} // duplicate scoreboard (collected during walk)
 
 var cli_count int = 10
@@ -43,7 +43,8 @@ var cli_nodot bool = false
 var cli_unfix string = ""
 var cli_prefix string = ""
 
-var cli_long bool = false // used by compare
+var cli_long bool = false   // used by compare
+var cli_pixels bool = false // add pixel size to end of filename
 
 // ----------------------- General
 
