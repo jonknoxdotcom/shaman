@@ -31,7 +31,9 @@ func init() {
 	rootCmd.AddCommand(biggestCmd)
 
 	biggestCmd.Flags().IntVarP(&cli_count, "count", "c", 20, "Specify number of files to show (default: 20)")
-	biggestCmd.Flags().BoolVarP(&cli_ellipsis, "ellipsis", "e", false, "Replace repeated key with '...'")
+	biggestCmd.Flags().StringVarP(&cli_discard, "discard", "", "", "Path to exclude from results")
+	biggestCmd.Flags().BoolVarP(&cli_ellipsis, "ellipsis", "e", false, "Replace repeated size with '...'")
+	biggestCmd.Flags().BoolVarP(&cli_nodot, "no-dot", "", false, "Do not include files/directories beginning '.'")
 }
 
 // ----------------------- "Biggest" (largest) function below this line -----------------------
@@ -83,6 +85,11 @@ func bigFile(fn string, prefix string) int {
 		pos2 := strings.Index(s, " :")
 		name := prefix + s[pos2+2:]
 
+		// drop if files or directories begins "." and nodot asserted
+		if cli_nodot && (strings.Contains(name, "/.") || name[0:1] == ".") {
+			continue
+		}
+
 		thresh = topAdd(key, id, name)
 	}
 	return lineno
@@ -102,6 +109,11 @@ func bigLocal(path string) int {
 	// process lines
 	lineno := 0
 	for filerec := range fileQueue {
+		// drop if files or directories begins "." and nodot asserted
+		if cli_nodot && (strings.Contains(filerec.filename, "/.") || filerec.filename[0:1] == ".") {
+			continue
+		}
+
 		lineno++
 		key := fmt.Sprintf("%010x", filerec.size)
 		if key < thresh {
@@ -131,12 +143,10 @@ func big(args []string) {
 		abort(6, "Input SSF file '"+files[0]+"' does not exist")
 	}
 
-	// We get the top 50
-	var thresh string = "0000000000"
-	if cli_count > 999 {
-		cli_count = 999
-	}
-	title := fmt.Sprintf("TOP %d BY SIZE", cli_count)
+	// Default 20, user over-ride with '--count', maximum 999
+	var thresh string = "0000000000" // size is 010x format
+	cli_count = min(cli_count, 999)
+	title := fmt.Sprintf("TOP %d FILES BY SIZE", cli_count)
 	topInit(cli_count, true, thresh)
 
 	switch true {

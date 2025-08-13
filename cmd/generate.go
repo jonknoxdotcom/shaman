@@ -104,7 +104,7 @@ func gen(args []string) {
 	var total_files int64
 	var total_bytes int64
 	for filerec := range fileQueue {
-		// drop if files or directories begind "." and nodot asserted
+		// drop if files or directories begins "." and nodot asserted
 		if cli_nodot && (strings.Contains(filerec.filename, "/.") || filerec.filename[0:1] == ".") {
 			continue
 		}

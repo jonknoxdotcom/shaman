@@ -37,7 +37,7 @@ var dupes = map[string]int{} // duplicate scoreboard (collected during walk)
 
 var cli_count int = 10
 var cli_discard string = ""
-var cli_ellipsis bool = false
+var cli_equal bool = false
 var cli_nodot bool = false
 
 var cli_unfix string = ""
@@ -84,6 +84,12 @@ func intAsStringWithCommas(i int64) string {
 		x := len(s)
 		return s[0:x-9] + "," + s[x-9:x-6] + "," + s[x-6:x-3] + "," + s[x-3:]
 	case i < 1e15:
+		x := len(s)
+		return s[0:x-12] + "," + s[x-12:x-9] + "," + s[x-9:x-6] + "," + s[x-6:x-3] + "," + s[x-3:]
+	case i < 1e18:
+		x := len(s)
+		return s[0:x-15] + "," + s[x-15:x-12] + "," + s[x-12:x-9] + "," + s[x-9:x-6] + "," + s[x-6:x-3] + "," + s[x-3:]
+	default:
 		return "X" + s
 	}
 	//15,103,984,154

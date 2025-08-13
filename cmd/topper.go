@@ -18,6 +18,7 @@ var topNames []string // reporting name
 var topDupes []int    // duplicate count
 var topDupeUsed bool  // whether we use dupes
 var topDepth int      // size of the table (N)
+var topLines int      // actual number of lines received
 
 // set up topper (can be size or date)
 func topInit(n int, useDupe bool, defaultKey string) {
@@ -37,6 +38,8 @@ func topInit(n int, useDupe bool, defaultKey string) {
 }
 
 func topAdd(key string, id string, name string) string {
+	topLines++
+	//fmt.Print(topLines, name)
 	// do conditional dupes later
 
 	// quickly check for duplication
@@ -51,10 +54,10 @@ func topAdd(key string, id string, name string) string {
 	// fmt.Println("Want to insert", size, "into", sizes)
 	pos := topDepth - 2 // "the row above the end of table"
 	for pos >= 0 {
-		// fmt.Print("CHK", size, "<", sizes[pos], " (pos=", pos, ")\n")
+		//fmt.Print("CHK", topKeys, "<", topKeys[pos], " (pos=", pos, ")\n")
 
 		if key <= topKeys[pos] { // <= required to get alpha on non-SHA search
-			// fmt.Print("\n", "BREAK: ", size, "<", sizes[pos], " pos=", pos, "\n")
+			//fmt.Print("\n", "BREAK: ", topKeys, "<", topKeys[pos], " pos=", pos, "\n")
 			break
 		}
 
@@ -84,7 +87,7 @@ func topReportBySize(title string) {
 	fmt.Println("POS   HEX SIZE   -----SIZE-----   #  FILENAME")
 	var decNum int64 = 0
 	var lastNum int64 = 0
-	for x := 0; x < topDepth; x++ {
+	for x := 0; x < min(topDepth, topLines); x++ {
 		decNum, _ = strconv.ParseInt(topKeys[x], 16, 0)
 		if !cli_ellipsis || decNum != lastNum {
 			// print full line every time
