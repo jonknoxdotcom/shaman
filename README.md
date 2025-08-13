@@ -123,7 +123,9 @@ shaman compare
 
 ### 9. Duplicates - find all duplicate files (bash script)
 
-### 10. 
+### 10. Biggest / Recent
+
+### 11. Sum - GNU support
 
 ## File format
 * SSF files are line-per-file collections of file descriptions

@@ -11,9 +11,11 @@ import (
 
 // tsvCmd represents the tsv command
 var tsvCmd = &cobra.Command{
-	Use:   "tsv",
-	Short: "Convert SSF file into TSV format (suitable for Excel)",
-	Long:  `Convert SSF file into TSV format (suitable for Excel)`,
+	Use:     "tsv",
+	Short:   "Convert SSF file into TSV format (suitable for Excel)",
+	Long:    `Convert SSF file into TSV format (suitable for Excel)`,
+	Args:    cobra.MaximumNArgs(1),
+	GroupID: "G3",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("tsv called")
 	},

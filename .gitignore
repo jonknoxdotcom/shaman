@@ -36,3 +36,7 @@ sample/*
 .DS_Store
 shaman
 poc/
+*.ssf
+_debug*
+code.sha256
+
