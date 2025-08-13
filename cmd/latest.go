@@ -30,8 +30,10 @@ var latestCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(latestCmd)
 
-	latestCmd.Flags().IntVarP(&cli_count, "count", "", 20, "Specify number of files to show (default: 20)")
+	latestCmd.Flags().IntVarP(&cli_count, "count", "c", 20, "Specify number of files to show (default: 20)")
 	latestCmd.Flags().StringVarP(&cli_discard, "discard", "", "", "Path to exclude from results")
+	latestCmd.Flags().BoolVarP(&cli_ellipsis, "ellipsis", "e", false, "Replace repeated time with '...'")
+	latestCmd.Flags().BoolVarP(&cli_nodot, "no-dot", "", false, "Do not include files/directories beginning '.'")
 }
 
 // ----------------------- "Latest" function below this line -----------------------
@@ -50,11 +52,13 @@ func lat(args []string) {
 	}
 	fn := files[0]
 
-	// We get the top 50
-	var N int = 50
-	var thresh string = "00000000"
-	topInit(N, false, thresh)
+	// Default 20, user over-ride with '--count', maximum 999
+	var thresh string = "00000000" // modtime is 08x format
+	cli_count = min(cli_count, 999)
+	title := fmt.Sprintf("LATEST %d CHANGED FILES", cli_count)
+	topInit(cli_count, true, thresh)
 
+	// fixed use of .ssf file (no local)
 	var r *os.File
 	r, err := os.Open(fn)
 	if err != nil {
@@ -99,6 +103,5 @@ func lat(args []string) {
 		thresh = topAdd(key, id, name)
 	}
 
-	title := fmt.Sprintf("TOP %d BY DATE", topDepth)
 	topReportByDate(title)
 }
