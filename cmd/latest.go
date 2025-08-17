@@ -32,7 +32,7 @@ func init() {
 
 	latestCmd.Flags().IntVarP(&cli_count, "count", "c", 20, "Specify number of files to show (default: 20)")
 	latestCmd.Flags().StringVarP(&cli_discard, "discard", "", "", "Path to exclude from results")
-	latestCmd.Flags().BoolVarP(&cli_ellipsis, "ellipsis", "e", false, "Replace repeated time with '...'")
+	latestCmd.Flags().BoolVarP(&cli_equal, "equal", "e", false, "Show equal time/hash in listing")
 	latestCmd.Flags().BoolVarP(&cli_nodot, "no-dot", "", false, "Do not include files/directories beginning '.'")
 }
 
@@ -56,7 +56,7 @@ func lat(args []string) {
 	var thresh string = "00000000" // modtime is 08x format
 	cli_count = min(cli_count, 999)
 	title := fmt.Sprintf("LATEST %d CHANGED FILES", cli_count)
-	topInit(cli_count, true, thresh)
+	topInit(cli_count, thresh)
 
 	// fixed use of .ssf file (no local)
 	var r *os.File

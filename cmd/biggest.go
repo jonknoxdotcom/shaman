@@ -32,7 +32,7 @@ func init() {
 
 	biggestCmd.Flags().IntVarP(&cli_count, "count", "c", 20, "Specify number of files to show (default: 20)")
 	biggestCmd.Flags().StringVarP(&cli_discard, "discard", "", "", "Path to exclude from results")
-	biggestCmd.Flags().BoolVarP(&cli_ellipsis, "ellipsis", "e", false, "Replace repeated size with '...'")
+	biggestCmd.Flags().BoolVarP(&cli_equal, "equal", "e", false, "Show subsequent equal size or hash")
 	biggestCmd.Flags().BoolVarP(&cli_nodot, "no-dot", "", false, "Do not include files/directories beginning '.'")
 }
 
@@ -52,11 +52,12 @@ func bigFile(fn string, prefix string) int {
 
 	// process lines
 	var s string
-	var lineno int
+	var lineNumber int
+	var linesAdded int
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		s = scanner.Text()
-		lineno++
+		lineNumber++
 		if len(s) == 0 || s[0:1] == "#" {
 			// drop comments or empty lines
 			continue
@@ -70,12 +71,12 @@ func bigFile(fn string, prefix string) int {
 			return 0
 		}
 		if pos1 == -1 || pos1 < 55 {
-			fmt.Printf("Skipping line %d - Invalid format (position %d, length %d)\n", lineno, pos1, len(s))
+			fmt.Printf("Skipping line %d - Invalid format (position %d, length %d)\n", lineNumber, pos1, len(s))
 			continue
 		}
 		temp := "000000" + s[51:pos1] // pad - better way?
 		key := temp[len(temp)-10:]
-		if key < thresh {
+		if key <= thresh {
 			// off the bottom - no need to do a Add attempt
 			continue
 		}
@@ -91,8 +92,9 @@ func bigFile(fn string, prefix string) int {
 		}
 
 		thresh = topAdd(key, id, name)
+		linesAdded++
 	}
-	return lineno
+	return linesAdded
 }
 
 func bigLocal(path string) int {
@@ -104,11 +106,12 @@ func bigLocal(path string) int {
 	}()
 
 	// get the threshold
-	thresh := topKeys[topDepth-1]
+	// thresh := topKeys[topDepth-1]
 
 	// process lines
 	lineno := 0
 	for filerec := range fileQueue {
+		// fmt.Println("line", filerec)
 		// drop if files or directories begins "." and nodot asserted
 		if cli_nodot && (strings.Contains(filerec.filename, "/.") || filerec.filename[0:1] == ".") {
 			continue
@@ -116,16 +119,17 @@ func bigLocal(path string) int {
 
 		lineno++
 		key := fmt.Sprintf("%010x", filerec.size)
-		if key < thresh {
-			// off the bottom - no need to do a Add attempt
-			continue
-		}
+		// if key < thresh {
+		// 	// off the bottom - no need to do a Add attempt
+		// 	fmt.Println("bottom")
+		// 	continue
+		// }
 
 		// get rest of fields
 		id := filerec.filename
 		name := filerec.filename
 
-		thresh = topAdd(key, id, name)
+		_ = topAdd(key, id, name)
 	}
 	return lineno
 }
@@ -145,21 +149,25 @@ func big(args []string) {
 
 	// Default 20, user over-ride with '--count', maximum 999
 	var thresh string = "0000000000" // size is 010x format
+	thresh = ""                      // empty string is before  "0000000000"
 	cli_count = min(cli_count, 999)
-	title := fmt.Sprintf("TOP %d FILES BY SIZE", cli_count)
-	topInit(cli_count, true, thresh)
+	//title := fmt.Sprintf("TOP %d FILES BY SIZE", cli_count)
+	title := "TOP %d FILES BY SIZE"
 
 	switch true {
 	case num == 0: // no files given - use local directory
 		title += " in current directory (dupes not identified)"
+		topInit(cli_count, thresh)
 		lines := bigLocal(".")
 		fmt.Printf("Found %d files\n", lines)
 
 	case num == 1:
+		topInit(cli_count, thresh)
 		lines := bigFile(files[0], "")
 		fmt.Printf("Found %d records\n", lines)
 	case num > 1:
 		title += " for "
+		topInit(cli_count, thresh)
 		for _, fn := range files {
 			lines := bigFile(fn, fn+": ")
 			title += fmt.Sprintf(" %s (%d)", fn, lines)
@@ -168,5 +176,5 @@ func big(args []string) {
 	default:
 	}
 
-	topReportBySize(title)
+	topReportBySize(title + "\n")
 }
