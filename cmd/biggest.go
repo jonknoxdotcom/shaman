@@ -111,9 +111,21 @@ func bigLocal(path string) int {
 	// process lines
 	lineno := 0
 	for filerec := range fileQueue {
+<<<<<<< HEAD
 		// fmt.Println("line", filerec)
 		// drop if files or directories begins "." and nodot asserted
 		if cli_nodot && (strings.Contains(filerec.filename, "/.") || filerec.filename[0:1] == ".") {
+=======
+		// drop if files or directories begins "." and nodot asserted
+		if cli_nodot && (strings.Contains(filerec.filename, "/.") || filerec.filename[0:1] == ".") {
+			continue
+		}
+
+		lineno++
+		key := fmt.Sprintf("%010x", filerec.size)
+		if key < thresh {
+			// off the bottom - no need to do a Add attempt
+>>>>>>> 26e713e525dcc73ee78207a3f149b82872007980
 			continue
 		}
 
@@ -149,10 +161,16 @@ func big(args []string) {
 
 	// Default 20, user over-ride with '--count', maximum 999
 	var thresh string = "0000000000" // size is 010x format
+<<<<<<< HEAD
 	thresh = ""                      // empty string is before  "0000000000"
 	cli_count = min(cli_count, 999)
 	//title := fmt.Sprintf("TOP %d FILES BY SIZE", cli_count)
 	title := "TOP %d FILES BY SIZE"
+=======
+	cli_count = min(cli_count, 999)
+	title := fmt.Sprintf("TOP %d FILES BY SIZE", cli_count)
+	topInit(cli_count, true, thresh)
+>>>>>>> 26e713e525dcc73ee78207a3f149b82872007980
 
 	switch true {
 	case num == 0: // no files given - use local directory
