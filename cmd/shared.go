@@ -92,8 +92,6 @@ func intAsStringWithCommas(i int64) string {
 	default:
 		return "X" + s
 	}
-	//15,103,984,154
-	return s
 }
 
 // ----------------------- Functions that process files
