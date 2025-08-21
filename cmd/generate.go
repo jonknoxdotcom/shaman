@@ -109,7 +109,7 @@ func gen(args []string) {
 			continue
 		}
 
-		_, sha_b64 := getFileSha256(filerec.filename)
+		_, sha_b64, _ := getFileSha256(filerec.filename)
 
 		modt := fmt.Sprintf("%8x", filerec.modified)
 		size := fmt.Sprintf("%04x", filerec.size)

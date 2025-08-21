@@ -43,7 +43,7 @@ func walkTreeToChannel(startpath string, c chan triplex) {
 			name := path.Join(startpath, entry.Name())
 			info, err := entry.Info()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Skipping entry: %s\n", name)
+				fmt.Fprintf(os.Stderr, "Skipping file: %s\n", name)
 				continue
 			}
 

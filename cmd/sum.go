@@ -111,7 +111,7 @@ func sum(args []string) {
 	var total_files int64
 	var total_bytes int64
 	for filerec := range fileQueue {
-		_, sha_b64 := getFileSha256(filerec.filename)
+		_, sha_b64, _ := getFileSha256(filerec.filename)
 		fmt.Fprintln(w, sha_b64+" "+filerec.filename)
 
 		// stats and ticks (dot every 100, flush every 500)

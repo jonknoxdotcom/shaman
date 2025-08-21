@@ -109,7 +109,7 @@ func writeRecord(w *bufio.Writer, amWriting bool, format int, verbosity int, tag
 	if amWriting && tag != "D" {
 		if shab64 == "" {
 			// lazy hash
-			_, shab64 = getFileSha256(name) // horrible - to be resolved
+			_, shab64, _ = getFileSha256(name) // horrible - to be resolved
 		}
 		//fmt.Println(format)
 		switch format {

@@ -176,7 +176,7 @@ func upd(args []string) {
 				writeRecord(w, amWriting, form, verbosity, "U", ssf_shab64, trip_modt, trip_size, ssf_name, "")
 			} else {
 				// has changed - get new digest
-				_, sha_b64 := getFileSha256(ssf_name)
+				_, sha_b64, _ := getFileSha256(ssf_name)
 
 				flag := ""
 				if ssf_modtime != trip_modt {

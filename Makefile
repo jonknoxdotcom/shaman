@@ -16,6 +16,7 @@ compile:
 	GOOS=linux GOARCH=arm64 go build -o bin/${APP}-linux-arm64 ${APP}.go
 	GOOS=linux GOARCH=amd64 go build -o bin/${APP}-linux-amd64 ${APP}.go
 	GOOS=freebsd GOARCH=386 go build -o bin/${APP}-freebsd-386 ${APP}.go
+	GOOS=windows GOARCH=amd64 go build -o bin/${APP}-windows.exe ${APP}.go
 
 skinny:
 	go build -o bin/${APP} -ldflags "-s -w" ${APP}.go

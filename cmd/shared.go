@@ -46,6 +46,11 @@ var cli_prefix string = ""
 var cli_long bool = false   // used by compare
 var cli_pixels bool = false // add pixel size to end of filename
 
+var cli_check int = 0 // Port for health endpoint for use in 'detect'
+
+var cli_asap bool = false       // speed is of the essence
+var cli_noprecheck bool = false // suppress checking of environment
+
 // ----------------------- General
 
 // Abnormal termination - break out of app, all internal fails are 10+
@@ -120,36 +125,43 @@ func getSSFs(flist []string) (int, []string, []bool) {
 
 // ----------------------- Hashing
 
-// Compute SHA256 for a given filename, returning byte array x 32 and truncated b64 hash
-func getFileSha256(fn string) ([]byte, string) {
-	//fmt.Print("*")
+type binsha = [32]byte
+
+// Compute SHA256 for a given filename, returning SHA256 in binary and string forms.
+func getFileSha256(fn string) (binsha, string, error) {
+	var binarySHASlice []byte
+
 	f, err := os.Open(fn)
 	if err != nil {
-		// shouldn't happen
-		abort(13, "Found file cannot be opened: "+fn)
+		// may happen (permissions lock)
+		fmt.Fprintf(os.Stderr, "Found file cannot be opened: %s\n", fn)
+		return binsha(binarySHASlice), "", err
 	}
 	defer f.Close()
 
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
 		// shouldn't happen
-		abort(14, "Found file cannot be processed: "+fn)
+		fmt.Fprintf(os.Stderr, "Found file cannot be processed: %s\n", fn)
+		return binsha(binarySHASlice), "", err
 	}
+	binarySHASlice = h.Sum(nil)
 
-	sha_bin := h.Sum(nil)
-	sha_b64 := b64.StdEncoding.EncodeToString(sha_bin)
-	if len(sha_b64) != 44 || sha_b64[43:] != "=" {
+	base64SHA := b64.StdEncoding.EncodeToString(binarySHASlice)
+	if len(base64SHA) != 44 || base64SHA[43:] != "=" {
 		// can't happen
-		abort(3, "sha result error for "+fn)
+		fmt.Fprintf(os.Stderr, "SHA result error for %s\n", fn)
+		return binsha(binarySHASlice), "", err
 	}
-	sha_b64 = sha_b64[0:43]
+	base64SHA = base64SHA[0:43]
 
-	return sha_bin, sha_b64
+	return binsha(binarySHASlice), base64SHA, nil
 }
 
-func shaBase64ToShaBinary(sha_b64 string) []byte {
-	shabin, _ := b64.StdEncoding.DecodeString(sha_b64 + "=")
-	return shabin
+func shaBase64ToShaBinary(sha_b64 string) binsha {
+	sha, _ := b64.StdEncoding.DecodeString(sha_b64 + "=")
+	// copy(shaCopy[0:31], sha[0:31])  -- can use cast
+	return binsha(sha)
 }
 
 // ----------------------- Reporting
