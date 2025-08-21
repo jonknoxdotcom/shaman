@@ -112,7 +112,7 @@ func upd(args []string) {
 	fileQueue := make(chan triplex, 4096)
 	go func() {
 		defer close(fileQueue)
-		walkTreeToChannel(startpath, fileQueue)
+		walkTreeYieldFilesToChannel(startpath, fileQueue, cli_nodot)
 	}()
 
 	// for now, perform copy (as a test) using scanner on 'r' buffer, max line is 64k

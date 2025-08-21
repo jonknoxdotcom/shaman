@@ -28,6 +28,7 @@ func init() {
 	rootCmd.AddCommand(estimateCmd)
 
 	estimateCmd.Flags().StringVarP(&cli_path, "path", "p", "", "Path to directory to scan (default is current directory)")
+	estimateCmd.Flags().BoolVarP(&cli_nodot, "no-dot", "", false, "Do not include files/directories beginning '.'")
 }
 
 // ----------------------- Estimate function below this line -----------------------
@@ -50,7 +51,7 @@ func est(args []string) {
 	fileQueue := make(chan triplex, 4096)
 	go func() {
 		defer close(fileQueue)
-		walkTreeToChannel(startpath, fileQueue)
+		walkTreeYieldFilesToChannel(startpath, fileQueue, cli_nodot)
 	}()
 
 	// process file list to provide stats

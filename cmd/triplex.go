@@ -25,7 +25,7 @@ type triplex struct {
 	size     int64
 }
 
-func walkTreeToChannel(startpath string, c chan triplex) {
+func walkTreeYieldFilesToChannel(startpath string, c chan triplex, nodot bool) {
 	entries, err := os.ReadDir(startpath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Skipping directory: %s\n", startpath)
@@ -34,6 +34,11 @@ func walkTreeToChannel(startpath string, c chan triplex) {
 
 	// step through contents of this dir
 	for _, entry := range entries {
+		if nodot && entry.Name()[0:1] == "." {
+			// skip the dot files AND dot directories
+			continue
+		}
+
 		if !entry.IsDir() {
 			if !entry.Type().IsRegular() {
 				// we ignore symlinks
@@ -50,7 +55,30 @@ func walkTreeToChannel(startpath string, c chan triplex) {
 			c <- triplex{name, info.ModTime().Unix(), info.Size()}
 		} else {
 			// it's a directory - dig down
-			walkTreeToChannel(path.Join(startpath, entry.Name()), c)
+			walkTreeYieldFilesToChannel(path.Join(startpath, entry.Name()), c, nodot)
+		}
+	}
+}
+
+func walkTreeYieldDirectoriesToChannel(startpath string, c chan string, nodot bool) {
+	c <- startpath
+	entries, err := os.ReadDir(startpath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Skipping directory: %s\n", startpath)
+		return
+	}
+
+	// find any directories
+	for _, entry := range entries {
+		if entry.IsDir() {
+			//fmt.Fprintf(os.Stderr, "found directory: %s\n", entry.Name())
+
+			if nodot && entry.Name()[0:1] == "." {
+				// skip the dot files AND dot directories
+				continue
+			}
+
+			walkTreeYieldDirectoriesToChannel(path.Join(startpath, entry.Name()), c, nodot)
 		}
 	}
 }

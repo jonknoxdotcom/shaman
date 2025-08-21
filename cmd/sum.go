@@ -32,6 +32,7 @@ func init() {
 	rootCmd.AddCommand(sumCmd)
 
 	sumCmd.Flags().StringVarP(&cli_path, "path", "p", "", "Path to directory to use (default is all files)")
+	sumCmd.Flags().BoolVarP(&cli_nodot, "no-dot", "", false, "Ignore files/directories beginning '.'")
 }
 
 // ----------------------- Sum function below this line -----------------------
@@ -104,7 +105,7 @@ func sum(args []string) {
 	fileQueue := make(chan triplex, 4096)
 	go func() {
 		defer close(fileQueue)
-		walkTreeToChannel(startpath, fileQueue)
+		walkTreeYieldFilesToChannel(startpath, fileQueue, cli_nodot)
 	}()
 
 	// process file list to sum SSF records

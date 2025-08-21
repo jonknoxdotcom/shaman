@@ -25,10 +25,10 @@ var detectCmd = &cobra.Command{
 	Long: `shaman detect
 Detect files in monitored folders.  Supply one or more SSF files to provide signatures of
 watched-for files.  Will run check of environment by default to see it contains no watched
-files. Then will continue to monitor for new files and perform checks on them.  Program 
-runs without exit unless detection successful. Alternatively, HTTP port provides status
-via HTTP 200 (all clean) and HTTP 503 (unhealthy - detected banned content). Side note:
-we avoid HTTP 404 to indicate failure as 'not found' might be misconstrued as 'clean'.
+files. Then will continue to monitor for newly deposited files and perform checks on them.
+Program loops until detection successful. Alternatively, HTTP port provides status via 
+HTTP 200 (all clean) and HTTP 503 (unhealthy - detected banned content). Note: we avoid
+returning 404 to indicate failure as 'not found' might be misconstrued as 'clean'. 
 To avoid false positives, the HTTP server does not start until the monitor phase starts.`,
 	Aliases: []string{"det"},
 	Args:    cobra.MaximumNArgs(99),
@@ -68,6 +68,58 @@ func init() {
 
 // shaman latest.ssf -c 80  --skip  && add --HUP stuff
 
+// watchLoop runs as a go-routine to process filesystem events such as creating new files or directories.
+func watchLoop(w *fsnotify.Watcher) {
+	i := 0
+	for {
+
+		select {
+		// Read from Errors.
+		case err, ok := <-w.Errors:
+			if !ok { // Channel was closed (i.e. Watcher.Close() was called).
+				return
+			}
+			fmt.Printf("ERROR: %s", err)
+
+		// Read from Events.
+		case e, ok := <-w.Events:
+			if !ok { // Channel was closed (i.e. Watcher.Close() was called).
+				return
+			}
+
+			// Just print the event nicely aligned, and keep track how many
+			// events we've seen.
+			i++
+			fmt.Printf("%3d %s\n", i, e)
+
+			eventOperator := e.Op.String()
+			filename := e.Name
+
+			switch eventOperator {
+			case "CREATE":
+				fmt.Println(eventOperator + ": need to check file or dir " + filename)
+
+			case "WRITE":
+				fmt.Println(eventOperator + ": need to scan file " + filename)
+
+			case "CHMOD":
+				fmt.Println(eventOperator + ": ignore")
+
+			case "REMOVE":
+				fmt.Println(eventOperator + ": ignore")
+
+			case "RENAME":
+				fmt.Println(eventOperator + ": if dir, assign watch; if file, scan " + filename)
+
+			default:
+				fmt.Println("Unexpected event ")
+			}
+
+		}
+	}
+
+}
+
 func det(args []string) {
 	// process CLI
 	num, files, found := getSSFs(args)
@@ -76,7 +128,7 @@ func det(args []string) {
 	case num > 10:
 		abort(8, "Too many watchlists")
 	case num < 1:
-		abort(9, "Watch list (.ssf) not specified")
+		abort(9, "You need to give at least one SSF file to use as the watch list")
 	}
 
 	// Key variables
@@ -154,7 +206,7 @@ func det(args []string) {
 		fileQueue := make(chan triplex, 4096)
 		go func() {
 			defer close(fileQueue)
-			walkTreeToChannel(startpath, fileQueue)
+			walkTreeYieldFilesToChannel(startpath, fileQueue, cli_nodot)
 		}()
 
 		var total_files int
@@ -178,7 +230,7 @@ func det(args []string) {
 			total_files++
 		}
 		if watchedFileDetected && cli_check == 0 {
-			abort(1, "One or more watched files already present")
+			abort(1, "One or more watched files found during pre-launch check")
 		}
 		fmt.Printf("Scanned %d files - no problems\n", total_files)
 	}
@@ -199,38 +251,31 @@ func det(args []string) {
 	defer watcher.Close()
 
 	// File system monitoring
+	go watchLoop(watcher)
+
+	// Ask for list of paths
+	var startpath string = "."
+	if cli_path != "" {
+		startpath = cli_path // add validation here
+	}
+	directoryQueue := make(chan string, 4096)
 	go func() {
-		for {
-			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
-					return
-				}
-				fmt.Println("event:", event)
-				if event.Has(fsnotify.Write) {
-					fmt.Println("modified file:", event.Name)
-				}
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
-				}
-				fmt.Println("error:", err)
-			}
-		}
+		defer close(directoryQueue)
+		walkTreeYieldDirectoriesToChannel(startpath, directoryQueue, cli_nodot)
 	}()
 
-	// Add a path.
-	err = watcher.Add("/Users/jon/Code/shaman/test")
-	if err != nil {
-		// fmt.Fatal(err)
-	}
-	err = watcher.Add("/tmp")
-	if err != nil {
-		// fmt.Fatal(err)
+	// Add startup paths
+	for dir := range directoryQueue {
+		fmt.Println("Registering directory", dir)
+		err = watcher.Add(dir)
+		if err != nil {
+			abort(1, "Unable to register watcher on "+dir)
+		}
 	}
 
 	// (Optionally) stand up HTTP health-check server here
 
 	// Block main goroutine forever.
+	fmt.Println("Monitoring... press ^C to exit")
 	<-make(chan struct{})
 }

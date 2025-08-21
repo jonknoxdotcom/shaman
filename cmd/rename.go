@@ -103,7 +103,7 @@ func ren(args []string) {
 	fileQueue := make(chan triplex, 4096)
 	go func() {
 		defer close(fileQueue)
-		walkTreeToChannel(startpath, fileQueue)
+		walkTreeYieldFilesToChannel(startpath, fileQueue, cli_nodot)
 	}()
 
 	// count and compute length of longest line
@@ -137,7 +137,7 @@ func ren(args []string) {
 	fileQueue = make(chan triplex, 4096)
 	go func() {
 		defer close(fileQueue)
-		walkTreeToChannel(startpath, fileQueue)
+		walkTreeYieldFilesToChannel(startpath, fileQueue, cli_nodot)
 	}()
 
 	// create move list *FIXME* needs pre-sizing

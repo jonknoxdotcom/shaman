@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"log/slog"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -85,7 +84,7 @@ func gen(args []string) {
 	fileQueue := make(chan triplex, 4096)
 	go func() {
 		defer close(fileQueue)
-		walkTreeToChannel(startpath, fileQueue)
+		walkTreeYieldFilesToChannel(startpath, fileQueue, cli_nodot)
 	}()
 
 	var verbosity int = 1
@@ -105,9 +104,9 @@ func gen(args []string) {
 	var total_bytes int64
 	for filerec := range fileQueue {
 		// drop if files or directories begins "." and nodot asserted
-		if cli_nodot && (strings.Contains(filerec.filename, "/.") || filerec.filename[0:1] == ".") {
-			continue
-		}
+		// if cli_nodot && (strings.Contains(filerec.filename, "/.") || filerec.filename[0:1] == ".") {
+		// 	continue
+		// }
 
 		_, sha_b64, _ := getFileSha256(filerec.filename)
 
