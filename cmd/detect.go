@@ -68,6 +68,9 @@ func init() {
 
 // shaman latest.ssf -c 80  --skip  && add --HUP stuff
 
+var watchedFileDetected bool
+var watchedSHAs map[binsha]bool
+
 // watchLoop runs as a go-routine to process filesystem events such as creating new files or directories.
 func watchLoop(w *fsnotify.Watcher) {
 	i := 0
@@ -83,33 +86,47 @@ func watchLoop(w *fsnotify.Watcher) {
 
 		// Read from Events.
 		case e, ok := <-w.Events:
-			if !ok { // Channel was closed (i.e. Watcher.Close() was called).
-				return
+			if !ok {
+				// getting here means w.Close() event has occurred
+				abort(1, "Encountered monitoring failure")
 			}
-
-			// Just print the event nicely aligned, and keep track how many
-			// events we've seen.
-			i++
-			fmt.Printf("%3d %s\n", i, e)
 
 			eventOperator := e.Op.String()
 			filename := e.Name
+			i++
+			fmt.Printf("%d: ", i)
 
 			switch eventOperator {
 			case "CREATE":
-				fmt.Println(eventOperator + ": need to check file or dir " + filename)
+				fmt.Println(eventOperator + " = need to check file or dir " + filename)
+
+				st, err := os.Stat(filename)
+
+				if err != nil {
+					fmt.Println("Got look-up error")
+				} else if st.IsDir() {
+					fmt.Println("It's a directory - need to track")
+				} else {
+					fmt.Println("File added - checking!")
+					sha_bin, _, _ := getFileSha256(filename)
+					if watchedSHAs[sha_bin] {
+						fmt.Println("This is a watched file! ")
+					} else {
+						fmt.Println("No problem")
+					}
+				}
 
 			case "WRITE":
-				fmt.Println(eventOperator + ": need to scan file " + filename)
+				fmt.Println(eventOperator + " = need to scan file " + filename)
 
 			case "CHMOD":
-				fmt.Println(eventOperator + ": ignore")
+				fmt.Println(eventOperator + " = ignore")
 
 			case "REMOVE":
-				fmt.Println(eventOperator + ": ignore")
+				fmt.Println(eventOperator + " = ignore")
 
 			case "RENAME":
-				fmt.Println(eventOperator + ": if dir, assign watch; if file, scan " + filename)
+				fmt.Println(eventOperator + " = if dir, assign watch; if file, scan " + filename)
 
 			default:
 				fmt.Println("Unexpected event ")
@@ -132,8 +149,8 @@ func det(args []string) {
 	}
 
 	// Key variables
-	watchedFileDetected := false               // watched files - for precheck and monitor phases
-	watchedSHAs := make(map[binsha]bool, 1000) // stored binary SHAs
+	watchedFileDetected = false               // watched files - for precheck and monitor phases
+	watchedSHAs = make(map[binsha]bool, 1000) // stored binary SHAs
 
 	// Phase 1 - get watch list from cli and ingest as binary
 	if cli_verbose {
