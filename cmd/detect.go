@@ -51,25 +51,34 @@ func init() {
 
 // ----------------------- Detect function below this line -----------------------
 
-// "shaman det" runs in a closed loop and does not exit unless the detection is successful
-// Detect takes a single parameter which is an SSF containing files to be detected (can be format 1 - i.e. anonymous)
-// The contents of the file are read in and stored (as binary 32-bit SHA256 hashes only) called the watchlist
-// The filesystem from the CWD (or from a --path directive) is scanned ("monitor directory")
+// "shaman det" keeps a directory tree free from "watched-for" files
+// It runs in a closed loop and does not exit unless a detection is successful
+//
+// Phase 1 - populate watchlist
+// Takes a one or more SSF filenames which list the files to be "watched-out-for" (this can be anon '--format 1')
+// The SHA parts of the file are read and stored densely as binary 32-bit SHA256 hashes in the 'watchlist'
+//
+// Phase 2 - scan monitored directory
+// The filesystem from the CWD (or from a '--path' directive) is scanned ("monitor directory")
 // All files are hashed and compared against the watchlist
 // An immediate termination occurs if a match is found
+//
+// Phase 3 - listen for changes
 // The application now enters watch mode, waiting for new files to be added to the monitor directory
 // All new files are hashed and compared to the watchlist, and the application exits if a match is found
 // If the optional "-c" health check endpoint is used at start, then an HTTP listener is generated
 // The application then does not exit but returns a 200 or 500 depending on a clean or detected state
 
-// Phase 1 - read watchlist
-// Phase 2 - scan monitor directory
-// Phase 3 - listen for changes
+// Examples
+// shaman latest.ssf                # scan current dir, then listen and return rc=1 on detection
+// shaman latest.ssf --asap         # do not list all pre-flight detection failures, just the first one
+// shaman latest.ssf --no-precheck  # skip the initial scan of the tree
+// shaman latest.ssf -c 80          # present detection via an HTTP health endpoint (no exit)
+// kill -HUP $SHAMANPID             # reload SSF file after a change
 
-// shaman latest.ssf -c 80  --skip  && add --HUP stuff
-
-var watchedFileDetected bool
-var watchedSHAs map[binsha]bool
+var watcher *fsnotify.Watcher   // handle to notification library
+var watchedFileDetected bool    // flag for true positive
+var watchedSHAs map[binsha]bool // watch list map
 
 // watchLoop runs as a go-routine to process filesystem events such as creating new files or directories.
 func watchLoop(w *fsnotify.Watcher) {
@@ -265,7 +274,7 @@ func det(args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer watcher.Close()
+	defer watcher.Close() // expect to never trigger
 
 	// File system monitoring
 	go watchLoop(watcher)
