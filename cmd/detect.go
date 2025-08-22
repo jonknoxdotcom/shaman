@@ -79,6 +79,8 @@ func init() {
 // Next steps:
 // * add trigger abstraction, collect hits
 // * record time-series event data
+// * implement HTTP ep
+// * add HUP reload handling
 // * prometheus endpoint??
 
 var watcher *fsnotify.Watcher   // handle to notification library
@@ -87,7 +89,7 @@ var watchedSHAs map[binsha]bool // watch list map
 
 // watchLoop runs as a go-routine to process filesystem events such as creating new files or directories.
 func watchLoop(w *fsnotify.Watcher) {
-	i := 0
+	// i := 0
 	for {
 
 		select {
@@ -107,45 +109,72 @@ func watchLoop(w *fsnotify.Watcher) {
 
 			eventOperator := e.Op.String()
 			filename := e.Name
-			i++
-			fmt.Printf("%d: ", i)
+			// i++
+			// fmt.Printf("%d: ", i)
 
 			switch eventOperator {
 			case "CREATE":
-				fmt.Println(eventOperator + " = need to check file or dir " + filename)
-
-				st, err := os.Stat(filename)
-
-				if err != nil {
-					fmt.Println("Got look-up error")
-				} else if st.IsDir() {
-					fmt.Println("It's a directory - need to track")
-				} else {
-					fmt.Println("File added - checking!")
-					sha_bin, _, _ := getFileSha256(filename)
-					if watchedSHAs[sha_bin] {
-						fmt.Println("This is a watched file! ")
-					} else {
-						fmt.Println("No problem")
-					}
-				}
+				// fmt.Println(eventOperator + " = need to check file or dir " + filename)
+				watchProcessUnidentifiedEntity(filename)
 
 			case "WRITE":
-				fmt.Println(eventOperator + " = need to scan file " + filename)
+				// fmt.Println(eventOperator + " = need to scan file " + filename)
+				watchProcessFile(filename)
 
 			case "CHMOD":
-				fmt.Println(eventOperator + " = ignore")
+				// fmt.Println(eventOperator + " = ignore")
 
 			case "REMOVE":
-				fmt.Println(eventOperator + " = ignore")
+				// fmt.Println(eventOperator + " = ignore")
 
 			case "RENAME":
-				fmt.Println(eventOperator + " = if dir, assign watch; if file, scan " + filename)
+				// fmt.Println(eventOperator + " = if dir, assign watch; if file, scan " + filename)
+				watchProcessUnidentifiedEntity(filename)
 
 			default:
-				fmt.Println("Unexpected event ")
+				abort(1, "Unable to continue monitoring (unknown event "+eventOperator+" - exiting (failsafe)")
 			}
 
+		}
+	}
+}
+
+func watchProcessUnidentifiedEntity(filename string) {
+	st, err := os.Stat(filename)
+	if err != nil {
+		fmt.Printf("Unable to process %s - look-up error\n", filename)
+	} else if st.IsDir() {
+		watchProcessDirectory(filename)
+	} else {
+		watchProcessFile(filename)
+	}
+}
+
+func watchProcessDirectory(dir string) {
+	registerDirectory(dir)
+}
+
+func watchProcessFile(filename string) {
+	sha_bin, _, _ := getFileSha256(filename)
+	if watchedSHAs[sha_bin] {
+		fmt.Println("Change: " + filename + " [matched]")
+		watchedFileDetected = true
+		if cli_check == 0 {
+			abort(1, "File on watchlist detected")
+		}
+	} else {
+		fmt.Println("Change: " + filename + " [ok]")
+	}
+}
+
+func registerDirectory(dir string) {
+	fmt.Println("Registering directory", dir)
+	err := watcher.Add(dir)
+	if err != nil {
+		fmt.Println("Unable to register watcher on " + dir)
+		watchedFileDetected = true
+		if cli_check == 0 {
+			abort(1, "Unable to extend monitoring - exiting (failsafe)")
 		}
 	}
 
@@ -299,11 +328,7 @@ func det(args []string) {
 
 	// Add startup paths
 	for dir := range directoryQueue {
-		fmt.Println("Registering directory", dir)
-		err = watcher.Add(dir)
-		if err != nil {
-			abort(1, "Unable to register watcher on "+dir)
-		}
+		registerDirectory(dir)
 	}
 
 	// (Optionally) stand up HTTP health-check server here
