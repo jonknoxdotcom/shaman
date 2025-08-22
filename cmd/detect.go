@@ -76,6 +76,11 @@ func init() {
 // shaman latest.ssf -c 80          # present detection via an HTTP health endpoint (no exit)
 // kill -HUP $SHAMANPID             # reload SSF file after a change
 
+// Next steps:
+// * add trigger abstraction, collect hits
+// * record time-series event data
+// * prometheus endpoint??
+
 var watcher *fsnotify.Watcher   // handle to notification library
 var watchedFileDetected bool    // flag for true positive
 var watchedSHAs map[binsha]bool // watch list map
@@ -257,6 +262,7 @@ func det(args []string) {
 		}
 		if watchedFileDetected && cli_check == 0 {
 			abort(1, "One or more watched files found during pre-launch check")
+			// triggerDetect()
 		}
 		fmt.Printf("Scanned %d files - no problems\n", total_files)
 	}
@@ -270,7 +276,8 @@ func det(args []string) {
 	}
 
 	// Create new watcher.
-	watcher, err := fsnotify.NewWatcher()
+	var err error
+	watcher, err = fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
 	}
