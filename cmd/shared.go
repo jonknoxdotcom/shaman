@@ -53,8 +53,15 @@ var cli_noprecheck bool = false // suppress checking of environment
 
 // ----------------------- General
 
-// Abnormal termination - break out of app, all internal fails are 10+
-// All os.Exits across the app are centralised here
+// conditionalMessage used to reduce clutter for CLI application with a 'verbose' switch.
+func conditionalMessage(cond bool, message string) {
+	if cond {
+		fmt.Println(message)
+	}
+}
+
+// abort handled abnormal termination - centralised point for any break out of app.
+// All internal fails are 10+.  All os.Exits across the app are centralised here
 func abort(rc int, reason string) {
 	if rc < 10 {
 		if reason != "" {

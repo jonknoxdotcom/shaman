@@ -142,7 +142,7 @@ func watchLoop(w *fsnotify.Watcher) {
 func watchProcessUnidentifiedEntity(filename string) {
 	st, err := os.Stat(filename)
 	if err != nil {
-		fmt.Printf("Unable to process %s - look-up error\n", filename)
+		abort(2, "New entry added but unable to stat "+filename)
 	} else if st.IsDir() {
 		watchProcessDirectory(filename)
 	} else {
@@ -167,17 +167,21 @@ func watchProcessFile(filename string) {
 	}
 }
 
+// detectTriggered is called when a watched-for file is found (hit) or an internal action fails which compromises security (failsafe).
+func detectTriggered(reason string) {
+	if cli_check == 0 {
+		abort(2, reason)
+	}
+	watchedFileDetected = true
+}
+
+// registerDirectory adds a directory to the watcher, or if unsuccessful declared the detection as triggered (failsafe).
 func registerDirectory(dir string) {
 	fmt.Println("Registering directory", dir)
 	err := watcher.Add(dir)
 	if err != nil {
-		fmt.Println("Unable to register watcher on " + dir)
-		watchedFileDetected = true
-		if cli_check == 0 {
-			abort(1, "Unable to extend monitoring - exiting (failsafe)")
-		}
+		detectTriggered("Unable to register watcher on " + dir)
 	}
-
 }
 
 func det(args []string) {
@@ -185,7 +189,7 @@ func det(args []string) {
 	num, files, found := getSSFs(args)
 	slog.Debug("cli handler", "num", num, "files", files, "found", found)
 	switch true {
-	case num > 10:
+	case num > 20:
 		abort(8, "Too many watchlists")
 	case num < 1:
 		abort(9, "You need to give at least one SSF file to use as the watch list")
@@ -196,25 +200,21 @@ func det(args []string) {
 	watchedSHAs = make(map[binsha]bool, 1000) // stored binary SHAs
 
 	// Phase 1 - get watch list from cli and ingest as binary
-	if cli_verbose {
-		fmt.Println("Phase 1 - establishing watch list")
-	}
+	conditionalMessage(cli_verbose, "Phase 1 - establishing watch list")
 
 	// ingest SHAs
 	for i := range num {
 		if !found[i] {
+			// should be a failsafe *FIXME*
 			fmt.Printf("Signature file '%s' not found\n", files[i])
 			continue
 		}
 
-		if cli_verbose {
-			fmt.Printf("Reading %s...\n", files[i])
-		}
-
+		conditionalMessage(cli_verbose, "Reading "+files[i]+"...")
 		var r *os.File
 		r, err := os.Open(files[i])
 		if err != nil {
-			fmt.Printf("Signature file '%s' cannot be read (check permissions)\n", files[i])
+			fmt.Printf("Signature file '%s' cannot be read (check permissions)", files[i])
 			continue
 		}
 		defer r.Close()
@@ -248,15 +248,11 @@ func det(args []string) {
 	if len(watchedSHAs) == 0 {
 		abort(1, "Nothing to detect (watch list is empty)")
 	}
-	if cli_verbose {
-		fmt.Printf("Watch list has %d signatures\n", len(watchedSHAs))
-	}
+	conditionalMessage(cli_verbose, fmt.Sprintf("Watch list has %d signatures\n", len(watchedSHAs)))
 
 	// Phase 2 - scan the cwd (or path)
 	if !cli_noprecheck {
-		if cli_verbose {
-			fmt.Println("Phase 2 - scanning existing file space")
-		}
+		conditionalMessage(cli_verbose, "Phase 2 - scanning existing file space")
 
 		// Call the tree walker to generate a file list (as a channel)
 		var startpath string = "."
@@ -295,27 +291,21 @@ func det(args []string) {
 		}
 		fmt.Printf("Scanned %d files - no problems\n", total_files)
 	}
-	if cli_noprecheck && cli_verbose {
-		fmt.Println("Skipping phase 2 (pre-check)")
-	}
+	conditionalMessage(cli_verbose && cli_noprecheck, "Skipping phase 2 (pre-check)")
 
 	// Phase 3: watch directories
-	if cli_verbose {
-		fmt.Println("Phase 3 - monitoring directories")
-	}
+	conditionalMessage(cli_verbose, "Phase 3 - monitoring directories")
 
-	// Create new watcher.
+	// Create new watcher and assign watchLoop to run it.
 	var err error
 	watcher, err = fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer watcher.Close() // expect to never trigger
-
-	// File system monitoring
 	go watchLoop(watcher)
 
-	// Ask for list of paths
+	// Use tree walker to get all directories, and register them with watcher.
 	var startpath string = "."
 	if cli_path != "" {
 		startpath = cli_path // add validation here
@@ -325,8 +315,6 @@ func det(args []string) {
 		defer close(directoryQueue)
 		walkTreeYieldDirectoriesToChannel(startpath, directoryQueue, cli_nodot)
 	}()
-
-	// Add startup paths
 	for dir := range directoryQueue {
 		registerDirectory(dir)
 	}
