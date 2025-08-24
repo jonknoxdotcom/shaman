@@ -5,15 +5,15 @@ package cmd
 
 import (
 	"bufio"
+	"fmt"
 	"log"
 	"log/slog"
+	"net/http"
 	"os"
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
-
-	"fmt"
 )
 
 // -------------------------------- Cobra management -------------------------------
@@ -79,7 +79,6 @@ func init() {
 // Next steps:
 // * add trigger abstraction, collect hits
 // * record time-series event data
-// * implement HTTP ep
 // * add HUP reload handling
 // * prometheus endpoint??
 
@@ -184,8 +183,18 @@ func registerDirectory(dir string) {
 	}
 }
 
+func healthCheckResponder(w http.ResponseWriter, req *http.Request) {
+	if !watchedFileDetected {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("200 - OK\n"))
+	} else {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Write([]byte("503 - Detected\n"))
+	}
+}
+
 func det(args []string) {
-	// process CLI
+	// Process CLI and perform sanity checks
 	num, files, found := getSSFs(args)
 	slog.Debug("cli handler", "num", num, "files", files, "found", found)
 	switch true {
@@ -193,6 +202,9 @@ func det(args []string) {
 		abort(8, "Too many watchlists")
 	case num < 1:
 		abort(9, "You need to give at least one SSF file to use as the watch list")
+	}
+	if cli_check != 0 && (cli_check < 80 || cli_check > 65535) {
+		abort(1, "Invalid health check value - must be 0 or between 80..65535")
 	}
 
 	// Key variables
@@ -226,13 +238,11 @@ func det(args []string) {
 			s := scanner.Text()
 			lineno++
 
-			// drop comments or empty lines
+			// drop comments or empty lines or too-short lines
 			if len(s) == 0 || s[0:1] == "#" {
 				continue
 			}
-
-			// drop wrong length lines
-			if len(s) < 43 {
+			if len(s) < 43 { // not enough for a Base64 SHA256
 				fmt.Printf("Ignoring line %d - not a signature\n", lineno)
 				ndel++
 				continue
@@ -291,7 +301,7 @@ func det(args []string) {
 		}
 		fmt.Printf("Scanned %d files - no problems\n", total_files)
 	}
-	conditionalMessage(cli_verbose && cli_noprecheck, "Skipping phase 2 (pre-check)")
+	conditionalMessage(cli_verbose && cli_noprecheck, "Skipping phase 2 (pre-check)\n")
 
 	// Phase 3: watch directories
 	conditionalMessage(cli_verbose, "Phase 3 - monitoring directories")
@@ -319,7 +329,15 @@ func det(args []string) {
 		registerDirectory(dir)
 	}
 
-	// (Optionally) stand up HTTP health-check server here
+	// (Optionally) stand up HTTP health-check server
+	if cli_check != 0 {
+		servingPort := fmt.Sprintf(":%d", cli_check)
+		http.HandleFunc("/", healthCheckResponder)
+		go func() {
+			http.ListenAndServe(servingPort, nil)
+		}()
+		conditionalMessage(cli_verbose, "Status indicated by health-check http://localhost"+servingPort+" (not by exit)")
+	}
 
 	// Block main goroutine forever.
 	fmt.Println("Monitoring... press ^C to exit")
