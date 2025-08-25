@@ -50,6 +50,7 @@ var cli_check int = 0 // Port for health endpoint for use in 'detect'
 
 var cli_asap bool = false       // speed is of the essence
 var cli_noprecheck bool = false // suppress checking of environment
+var cli_disclose bool = false   // add time-series disclosure
 
 // ----------------------- General
 

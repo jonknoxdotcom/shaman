@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
@@ -47,6 +48,7 @@ func init() {
 	detectCmd.Flags().BoolVarP(&cli_nodot, "no-dot", "", false, "Ignore files/directories beginning '.'")
 	detectCmd.Flags().BoolVarP(&cli_asap, "asap", "", false, "Give up as soon as error detected (when speed is of the essence)")
 	detectCmd.Flags().BoolVarP(&cli_noprecheck, "no-precheck", "", false, "Used to disable to pre-check that the environment is clean")
+	detectCmd.Flags().BoolVarP(&cli_disclose, "disclose", "", false, "Add time-series disclosure to health-check '/log' endpoint")
 }
 
 // ----------------------- Detect function below this line -----------------------
@@ -85,6 +87,20 @@ func init() {
 var watcher *fsnotify.Watcher   // handle to notification library
 var watchedFileDetected bool    // flag for true positive
 var watchedSHAs map[binsha]bool // watch list map
+
+// time-series recordings of detection events
+type detectionTS struct {
+	timeStamp     int64  // unixtime detected
+	duringPrescan bool   // phase of discovery
+	fileName      string // name of file
+	sha           binsha // identified (SHA,modtime,size)
+}
+
+var watchDetected []detectionTS // list of discovered violations
+
+func tsLogger(t int64, pre bool, fileName string, sb binsha) {
+	watchDetected = append(watchDetected, detectionTS{t, pre, fileName, sb})
+}
 
 // watchLoop runs as a go-routine to process filesystem events such as creating new files or directories.
 func watchLoop(w *fsnotify.Watcher) {
@@ -157,6 +173,7 @@ func watchProcessFile(filename string) {
 	sha_bin, _, _ := getFileSha256(filename)
 	if watchedSHAs[sha_bin] {
 		fmt.Println("Change: " + filename + " [matched]")
+		tsLogger(time.Now().Unix(), false, filename, sha_bin)
 		watchedFileDetected = true
 		if cli_check == 0 {
 			abort(1, "File on watchlist detected")
@@ -190,6 +207,22 @@ func healthCheckResponder(w http.ResponseWriter, req *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte("503 - Detected\n"))
+	}
+}
+
+func healthCheckLogDisplay(w http.ResponseWriter, req *http.Request) {
+	if len(watchDetected) == 0 {
+		// No logs found
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("404 - Not found\n"))
+	} else {
+		// Details of logs
+		w.WriteHeader(http.StatusOK)
+
+		for _, d := range watchDetected {
+			row := fmt.Sprintf("%d,%32x,%t,%s\n", d.timeStamp, d.sha, d.duringPrescan, d.fileName)
+			w.Write([]byte(row))
+		}
 	}
 }
 
@@ -263,6 +296,7 @@ func det(args []string) {
 	// Phase 2 - scan the cwd (or path)
 	if !cli_noprecheck {
 		conditionalMessage(cli_verbose, "Phase 2 - scanning existing file space")
+		checkTime := time.Now().Unix()
 
 		// Call the tree walker to generate a file list (as a channel)
 		var startpath string = "."
@@ -288,6 +322,7 @@ func det(args []string) {
 			if is_watched {
 				fmt.Fprintf(os.Stderr, "Detected file: %s\n", filerec.filename)
 				watchedFileDetected = true
+				tsLogger(checkTime, true, filerec.filename, sha_bin)
 				if cli_asap {
 					break
 				}
@@ -333,6 +368,9 @@ func det(args []string) {
 	if cli_check != 0 {
 		servingPort := fmt.Sprintf(":%d", cli_check)
 		http.HandleFunc("/", healthCheckResponder)
+		if cli_disclose {
+			http.HandleFunc("/log", healthCheckLogDisplay)
+		}
 		go func() {
 			http.ListenAndServe(servingPort, nil)
 		}()
