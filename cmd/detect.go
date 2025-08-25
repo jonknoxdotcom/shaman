@@ -173,11 +173,13 @@ func watchProcessFile(filename string) {
 	sha_bin, _, _ := getFileSha256(filename)
 	if watchedSHAs[sha_bin] {
 		fmt.Println("Change: " + filename + " [matched]")
-		tsLogger(time.Now().Unix(), false, filename, sha_bin)
-		watchedFileDetected = true
 		if cli_check == 0 {
 			abort(1, "File on watchlist detected")
 		}
+		if cli_disclose {
+			tsLogger(time.Now().Unix(), false, filename, sha_bin)
+		}
+		watchedFileDetected = true
 	} else {
 		fmt.Println("Change: " + filename + " [ok]")
 	}
@@ -322,7 +324,9 @@ func det(args []string) {
 			if is_watched {
 				fmt.Fprintf(os.Stderr, "Detected file: %s\n", filerec.filename)
 				watchedFileDetected = true
-				tsLogger(checkTime, true, filerec.filename, sha_bin)
+				if cli_disclose {
+					tsLogger(checkTime, true, filerec.filename, sha_bin)
+				}
 				if cli_asap {
 					break
 				}
