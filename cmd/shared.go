@@ -12,6 +12,7 @@ import (
 	"maps"
 	"os"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -51,6 +52,8 @@ var cli_check int = 0 // Port for health endpoint for use in 'detect'
 var cli_asap bool = false       // speed is of the essence
 var cli_noprecheck bool = false // suppress checking of environment
 var cli_disclose bool = false   // add time-series disclosure
+
+var cli_showform bool = false // determined format
 
 // ----------------------- General
 
@@ -108,6 +111,29 @@ func intAsStringWithCommas(i int64) string {
 }
 
 // ----------------------- Functions that process files
+
+// Return a list of verified files
+func getAnySort(fileList []string) (int, []string, []bool) {
+	sort.Strings((fileList))
+	return getAny(fileList)
+}
+
+// Return a list of verified files
+func getAny(fileList []string) (int, []string, []bool) {
+	var flist []string
+	var fexists []bool
+
+	for _, fn := range fileList {
+		flist = append(flist, fn)
+
+		// do file read test (want it to fail)
+		fd, err := os.Open(fn)
+		fexists = append(fexists, err == nil)
+		fd.Close()
+	}
+
+	return len(flist), flist, fexists
+}
 
 // Return a list of verified SSFs. **FIXME**
 func getSSFs(flist []string) (int, []string, []bool) {
