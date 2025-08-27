@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -62,8 +64,8 @@ func dir(args []string) {
 
 		numFiles = 0
 		numBytes = 0
-		// dateStart := "ffffffff"
-		// dateEnd := "00000000"
+		dateStart := "ffffffff"
+		dateEnd := "00000000"
 		isAnon := false
 
 		var r *os.File
@@ -86,6 +88,14 @@ func dir(args []string) {
 				continue
 			}
 
+			// formats:
+			// 0 = default (5)
+			// 1 = S
+			// 2 = SM
+			// 3 = SMB--
+			// 4 = SMB-N
+			// 5 = SMBAN
+
 			// work out if likely to be signature
 			pos := strings.IndexByte(s, 32)
 
@@ -107,16 +117,32 @@ func dir(args []string) {
 			numFiles++
 		}
 
+		// create date ranges
+		dateStartStr := "????-??-??"
+		dateEndStr := "????-??-??"
+		if dateStart != "ffffffff" {
+			var i int64
+			var t time.Time
+
+			i, _ = strconv.ParseInt(dateStart, 16, 64)
+			t = time.Unix(i, 0)
+			dateStartStr = t.Format("YYYYMMDD")
+
+			i, _ = strconv.ParseInt(dateEnd, 16, 64)
+			t = time.Unix(i, 0)
+			dateEndStr = t.Format("YYYYMMDD")
+		}
+
 		// print summary of this file
 		if !isAnon {
 			fmt.Printf("%18s  %10s - %10s%9sx",
 				intAsStringWithCommas(numBytes),
-				"2010-xx-xx", "2025-xx-xx",
+				dateStartStr, dateEndStr,
 				intAsStringWithCommas(numFiles))
 		} else {
 			fmt.Printf("%18s  %10s - %10s%9sx",
 				"------------------",
-				"????-??-??", "????-??-??",
+				dateStartStr, dateEndStr,
 				intAsStringWithCommas(numFiles))
 		}
 

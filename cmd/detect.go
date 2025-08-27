@@ -293,11 +293,11 @@ func det(args []string) {
 	if len(watchedSHAs) == 0 {
 		abort(1, "Nothing to detect (watch list is empty)")
 	}
-	conditionalMessage(cli_verbose, fmt.Sprintf("Watch list has %d signatures\n", len(watchedSHAs)))
+	conditionalMessage(cli_verbose, fmt.Sprintf("Watch list has %d signature(s)", len(watchedSHAs)))
 
 	// Phase 2 - scan the cwd (or path)
 	if !cli_noprecheck {
-		conditionalMessage(cli_verbose, "Phase 2 - scanning existing file space")
+		conditionalMessage(cli_verbose, "\nPhase 2 - scanning existing file space")
 		checkTime := time.Now().Unix()
 
 		// Call the tree walker to generate a file list (as a channel)
@@ -340,10 +340,10 @@ func det(args []string) {
 		}
 		fmt.Printf("Scanned %d files - no problems\n", total_files)
 	}
-	conditionalMessage(cli_verbose && cli_noprecheck, "Skipping phase 2 (pre-check)\n")
+	conditionalMessage(cli_verbose && cli_noprecheck, "Skipping phase 2 (pre-check)")
 
 	// Phase 3: watch directories
-	conditionalMessage(cli_verbose, "Phase 3 - monitoring directories")
+	conditionalMessage(cli_verbose, "\nPhase 3 - monitoring directories")
 
 	// Create new watcher and assign watchLoop to run it.
 	var err error
