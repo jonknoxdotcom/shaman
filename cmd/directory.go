@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"os"
@@ -41,6 +42,20 @@ func init() {
 
 // ----------------------- Directory function below this line -----------------------
 
+func isBase64(s string) bool {
+	_, err := base64.StdEncoding.DecodeString(s + "=")
+	return err == nil
+}
+
+// *FIXME*
+func isHexadecimal(s string) bool {
+	// fmt.Println("hex:", s)
+	return true
+}
+
+const NODATE = "-no dates-"
+const NOSIZE = "-not known-"
+
 func dir(args []string) {
 	// Process CLI and perform sanity checks
 	num, files, found := getAnySort(args)
@@ -62,22 +77,25 @@ func dir(args []string) {
 			continue
 		}
 
+		format := -1
 		numFiles = 0
 		numBytes = 0
 		dateStart := "ffffffff"
 		dateEnd := "00000000"
-		isAnon := false
 
 		var r *os.File
 		r, err := os.Open(files[i])
 		if err != nil {
+			slog.Debug("file reject", "fn", files[i], "reason", "permissions")
 			fmt.Printf("File %s: cannot be read (check permissions)\n", files[i])
 			continue
 		}
 		defer r.Close()
 
 		lineno := 0 // local file line number
+		validSSF := true
 		scanner := bufio.NewScanner(r)
+	SCANNER:
 		for scanner.Scan() {
 			// process the line from scanner (from the SSF file)
 			s := scanner.Text()
@@ -85,63 +103,141 @@ func dir(args []string) {
 
 			// drop comments or empty lines or too-short lines
 			if len(s) == 0 || s[0:1] == "#" {
+				// legitimate non-SHA lines in SSF format (continue scanner loop)
 				continue
 			}
 
-			// formats:
-			// 0 = default (5)
-			// 1 = S
-			// 2 = SM
-			// 3 = SMB--
-			// 4 = SMB-N
-			// 5 = SMBAN
+			// check for minimum length line
+			if len(s) < 43 {
+				// cannot be SHA hash, so not SSF format
+				slog.Debug("file reject", "fn", files[i], "reason", "short line", "line", lineno)
+				validSSF = false
+				break
+			}
 
-			// work out if likely to be signature
+			// try to determine format:
+			//  0 = default (5)
+			//  1 = S		43
+			//  2 = SM		43 + 8
+			//  3 = SMB--	43 + 8 + 4/5/6/7/8/9
+			//  4 = SMB-N	) have
+			//  5 = SMBAN	) seps
+
+			shaString := ""
+			modTimeString := ""
+			bytesString := ""
+
+			// space separator?
 			pos := strings.IndexByte(s, 32)
+			slog.Debug("TEST", "fn", files[i], "line", lineno, "pos", pos)
 
-			if pos == -1 && len(s) == 43 {
-				// looks like format 0
-				isAnon = true
-			} else {
+			switch true {
 
-				if pos < 43 { // not enough for a Base64 SHA256 - assume not SSF
-					fmt.Printf("Ignoring %s (line %d invalid)\n", files[i], lineno)
-					break
+			case pos == -1:
+				format = 1
+				shaString = s[0:43]
+				if len(s) > 43+8 {
+					format = 2
+					modTimeString = s[43:51]
+				}
+				if len(s) > 43+8+4 {
+					format = 3
+					bytesString = s[51:]
 				}
 
-				if pos == -1 || pos < 55 {
-					fmt.Printf("Ignoring %s (line %d invalid)\n", files[i], lineno)
-					break
+			case pos == 43:
+				// is multipart line, with no modtime or bytes (??)
+				format = 5
+				shaString = s[0:43]
+
+			case pos == 51:
+				// is multipart line, with SHA+modtime, no bytes (??)
+				format = 5
+				shaString = s[0:43]
+				modTimeString = s[43:51]
+
+			case pos >= 55:
+				// is multipart line, with SHA, modtime, bytes
+				format = 5
+				shaString = s[0:43]
+				modTimeString = s[43:51]
+				bytesString = s[51:pos]
+
+			default:
+				slog.Debug("file reject", "fn", files[i], "reason", "invalid format", "line", lineno)
+				validSSF = false
+				break SCANNER
+			}
+
+			// check values for correctness
+			if !isBase64(shaString) {
+				// has chars outside of b64 encoding tokens
+				slog.Debug("file reject", "fn", files[i], "reason", "non-base64 SHA tokens", "line", lineno)
+				validSSF = false
+				break SCANNER
+			}
+			if modTimeString != "" && !isHexadecimal(modTimeString) {
+				// has chars outside of 0-9, a-f
+				slog.Debug("file reject", "fn", files[i], "reason", "non-hex modtime tokens", "line", lineno)
+				validSSF = false
+				break SCANNER
+			}
+			if bytesString != "" && !isHexadecimal(bytesString) {
+				// has chars outside of 0-9, a-f
+				slog.Debug("file reject", "fn", files[i], "reason", "non-hex bytes tokens", "line", lineno)
+				validSSF = false
+				break SCANNER
+			}
+
+			// apply tracking values
+			if modTimeString != "" {
+				// fmt.Println("this date:", modTimeString)
+				if modTimeString < dateStart {
+					dateStart = modTimeString
 				}
+				if modTimeString > dateEnd {
+					dateEnd = modTimeString
+				}
+			}
+			// fmt.Printf("b='%s'\n", bytesString)
+			if bytesString != "" {
+				n, _ := strconv.ParseInt(bytesString, 16, 64)
+				// fmt.Println("b2=", n)
+				numBytes += n
 			}
 			numFiles++
 		}
+		if !validSSF {
+			fmt.Printf("File %s: invalid format\n", files[i])
+			continue
+		}
 
 		// create date ranges
-		dateStartStr := "????-??-??"
-		dateEndStr := "????-??-??"
+		slog.Debug("valid file", "fn", files[i], "format", format, "numFiles", numFiles, "numBytes", numBytes, "dateStart", dateStart, "dateEnd", dateEnd)
+		dateStartStr := NODATE
+		dateEndStr := NODATE
 		if dateStart != "ffffffff" {
 			var i int64
 			var t time.Time
 
 			i, _ = strconv.ParseInt(dateStart, 16, 64)
 			t = time.Unix(i, 0)
-			dateStartStr = t.Format("YYYYMMDD")
+			dateStartStr = t.Format(time.RFC3339)[0:10]
 
 			i, _ = strconv.ParseInt(dateEnd, 16, 64)
 			t = time.Unix(i, 0)
-			dateEndStr = t.Format("YYYYMMDD")
+			dateEndStr = t.Format(time.RFC3339)[0:10]
 		}
 
 		// print summary of this file
-		if !isAnon {
-			fmt.Printf("%18s  %10s - %10s%9sx",
+		if format == 5 {
+			fmt.Printf("%18s  %10s => %10s%9sx",
 				intAsStringWithCommas(numBytes),
 				dateStartStr, dateEndStr,
 				intAsStringWithCommas(numFiles))
 		} else {
-			fmt.Printf("%18s  %10s - %10s%9sx",
-				"------------------",
+			fmt.Printf("%18s  %10s => %10s%9sx",
+				NOSIZE,
 				dateStartStr, dateEndStr,
 				intAsStringWithCommas(numFiles))
 		}
