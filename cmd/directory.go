@@ -47,9 +47,16 @@ func isBase64(s string) bool {
 	return err == nil
 }
 
-// *FIXME*
+// isHexadecimal returns validation of likely hexadecimal number that can be odd or even nybbles long.
+// *FIXME* possible refactor the loop logic
 func isHexadecimal(s string) bool {
 	// fmt.Println("hex:", s)
+	for i := 0; i < len(s); i++ {
+		ch := s[i : i+1]
+		if !strings.Contains("0123456789abcdef", ch) {
+			return false
+		}
+	}
 	return true
 }
 
@@ -67,13 +74,24 @@ func dir(args []string) {
 		abort(9, "You need to give at least one file")
 	}
 
+	// Calculate longest filename (for reporting), and issue missing file rejections
+	longestFileName := 0
+	for i := range num {
+		if !found[i] {
+			fmt.Printf("File '%s' not found\n", files[i])
+			continue
+		}
+		if len(files[i]) > longestFileName {
+			longestFileName = len(files[i])
+		}
+	}
+
 	// Walk through file list
 	var numFiles int64
 	var numBytes int64
 	for i := range num {
-
 		if !found[i] {
-			fmt.Printf("Signature file '%s' not found\n", files[i])
+			// dead files reported earlier
 			continue
 		}
 
@@ -230,22 +248,13 @@ func dir(args []string) {
 		}
 
 		// print summary of this file
+		fmt.Printf("%-"+strconv.Itoa(longestFileName)+"s  ", files[i])
+		fmt.Printf("%9sx  ", intAsStringWithCommas(numFiles))
+
 		if format == 5 {
-			fmt.Printf("%18s  %10s => %10s%9sx",
-				intAsStringWithCommas(numBytes),
-				dateStartStr, dateEndStr,
-				intAsStringWithCommas(numFiles))
-		} else {
-			fmt.Printf("%18s  %10s => %10s%9sx",
-				NOSIZE,
-				dateStartStr, dateEndStr,
-				intAsStringWithCommas(numFiles))
+			fmt.Printf("%10s  %10s", dateStartStr, dateEndStr)
+			fmt.Printf("%19s", intAsStringWithCommas(numBytes))
 		}
-
-		if cli_showform {
-			fmt.Printf("  5/SMBAN")
-		}
-
-		fmt.Printf("  %s\n", files[i])
+		fmt.Println()
 	}
 }

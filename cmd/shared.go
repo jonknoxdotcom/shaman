@@ -114,7 +114,7 @@ func intAsStringWithCommas(i int64) string {
 
 // Return a list of verified files
 func getAnySort(fileList []string) (int, []string, []bool) {
-	sort.Strings((fileList))
+	sort.Strings(fileList)
 	return getAny(fileList)
 }
 
