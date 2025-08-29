@@ -38,6 +38,7 @@ func init() {
 	rootCmd.AddCommand(directoryCmd)
 
 	directoryCmd.Flags().BoolVarP(&cli_showform, "show-format", "", false, "Show file's determined format")
+	directoryCmd.Flags().BoolVarP(&cli_grand, "grand-totals", "g", false, "Display grand-totals on completion")
 }
 
 // ----------------------- Directory function below this line -----------------------
@@ -71,11 +72,22 @@ func dir(args []string) {
 		abort(9, "You need to give at least one file")
 	}
 
-	// Calculate longest filename (for reporting), and issue missing file rejections
-	longestFileName := 0
+	// Grand totals only used if '-g' added, but computed non-the-less.
+	const totalPhrase string = "GRAND TOTAL"
+	var allFiles int64 = 0           // count of number of signatures
+	var allStart string = "ffffffff" // first file of all chronologically
+	var allEnd string = "00000000"   // last file of all chronologically
+	var allBytes int64 = 0           // count of declared bytes in signatures
+
+	// Calculate longest filename (for reporting), which is at least as long as grand-total message.
+	// At the same time, get out of the way any failed file detections (which may be critical).
+	longestFileName := len(totalPhrase)
 	for i := range num {
 		if !found[i] {
 			fmt.Printf("File '%s' not found\n", files[i])
+			if cli_strict {
+
+			}
 			continue
 		}
 		if len(files[i]) > longestFileName {
@@ -226,11 +238,19 @@ func dir(args []string) {
 			fmt.Printf("File %s: invalid format\n", files[i])
 			continue
 		}
-
-		// create date ranges
 		slog.Debug("valid file", "fn", files[i], "format", format, "numFiles", numFiles, "numBytes", numBytes, "dateStart", dateStart, "dateEnd", dateEnd)
 
-		// print summary of this file
+		// Work out grand-total increments (even if not displayed).
+		allFiles += numFiles
+		if dateStart < allStart {
+			allStart = dateStart
+		}
+		if dateEnd > allEnd {
+			allEnd = dateEnd
+		}
+		allBytes += numBytes
+
+		// Write summary line for this SSF file.
 		fmt.Printf("%-"+strconv.Itoa(longestFileName)+"s  ", files[i])
 		fmt.Printf("%9sx  ", intAsStringWithCommas(numFiles))
 
@@ -250,6 +270,30 @@ func dir(args []string) {
 
 			if numBytes != 0 {
 				fmt.Printf("%19s", intAsStringWithCommas(numBytes))
+			}
+		}
+		fmt.Println()
+	}
+
+	if cli_grand {
+		fmt.Printf("\n%-"+strconv.Itoa(longestFileName)+"s  ", totalPhrase)
+		fmt.Printf("%9sx  ", intAsStringWithCommas(allFiles))
+		if allStart != "ffffffff" {
+			var i int64
+			var t time.Time
+
+			i, _ = strconv.ParseInt(allStart, 16, 64)
+			t = time.Unix(i, 0)
+			dateStartStr := t.Format(time.RFC3339)[0:10]
+
+			i, _ = strconv.ParseInt(allEnd, 16, 64)
+			t = time.Unix(i, 0)
+			dateEndStr := t.Format(time.RFC3339)[0:10]
+
+			fmt.Printf("%10s  %10s", dateStartStr, dateEndStr)
+
+			if allBytes != 0 {
+				fmt.Printf("%19s", intAsStringWithCommas(allBytes))
 			}
 		}
 		fmt.Println()
