@@ -240,6 +240,7 @@ func dir(args []string) {
 		}
 		slog.Debug("valid file", "fn", files[i], "format", format, "numFiles", numFiles, "numBytes", numBytes, "dateStart", dateStart, "dateEnd", dateEnd)
 
+<<<<<<< HEAD
 		// Work out grand-total increments (even if not displayed).
 		allFiles += numFiles
 		if dateStart < allStart {
@@ -251,6 +252,9 @@ func dir(args []string) {
 		allBytes += numBytes
 
 		// Write summary line for this SSF file.
+=======
+		// print summary of this file
+>>>>>>> 17da3b64c2552748ce9096f16d11194dea4ee7cf
 		fmt.Printf("%-"+strconv.Itoa(longestFileName)+"s  ", files[i])
 		fmt.Printf("%9sx  ", intAsStringWithCommas(numFiles))
 
@@ -271,6 +275,7 @@ func dir(args []string) {
 			if numBytes != 0 {
 				fmt.Printf("%19s", intAsStringWithCommas(numBytes))
 			}
+<<<<<<< HEAD
 		}
 		fmt.Println()
 	}
@@ -295,6 +300,8 @@ func dir(args []string) {
 			if allBytes != 0 {
 				fmt.Printf("%19s", intAsStringWithCommas(allBytes))
 			}
+=======
+>>>>>>> 17da3b64c2552748ce9096f16d11194dea4ee7cf
 		}
 		fmt.Println()
 	}
