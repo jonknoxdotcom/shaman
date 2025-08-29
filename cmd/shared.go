@@ -54,6 +54,7 @@ var cli_noprecheck bool = false // suppress checking of environment
 var cli_disclose bool = false   // add time-series disclosure
 
 var cli_showform bool = false // determined format
+var cli_strict bool = false   // strict failsafe rules (e.g. missing file raises error)
 
 // ----------------------- General
 

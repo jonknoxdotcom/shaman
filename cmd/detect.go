@@ -49,6 +49,7 @@ func init() {
 	detectCmd.Flags().BoolVarP(&cli_asap, "asap", "", false, "Give up as soon as error detected (when speed is of the essence)")
 	detectCmd.Flags().BoolVarP(&cli_noprecheck, "no-precheck", "", false, "Used to disable to pre-check that the environment is clean")
 	detectCmd.Flags().BoolVarP(&cli_disclose, "disclose", "", false, "Add time-series disclosure to health-check '/log' endpoint")
+	detectCmd.Flags().BoolVarP(&cli_strict, "strict", "", false, "Apply strict failsafes")
 }
 
 // ----------------------- Detect function below this line -----------------------
@@ -254,6 +255,9 @@ func det(args []string) {
 		if !found[i] {
 			// should be a failsafe *FIXME*
 			fmt.Printf("Signature file '%s' not found\n", files[i])
+			if cli_strict {
+				abort(1, "Strict processing requirement (failsafe)")
+			}
 			continue
 		}
 
@@ -262,6 +266,9 @@ func det(args []string) {
 		r, err := os.Open(files[i])
 		if err != nil {
 			fmt.Printf("Signature file '%s' cannot be read (check permissions)", files[i])
+			if cli_strict {
+				abort(1, "Strict processing requirement (failsafe)")
+			}
 			continue
 		}
 		defer r.Close()
