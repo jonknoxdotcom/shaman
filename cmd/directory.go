@@ -60,9 +60,6 @@ func isHexadecimal(s string) bool {
 	return true
 }
 
-const NODATE = "-no dates-"
-const NOSIZE = "-not known-"
-
 func dir(args []string) {
 	// Process CLI and perform sanity checks
 	num, files, found := getAnySort(args)
@@ -232,28 +229,28 @@ func dir(args []string) {
 
 		// create date ranges
 		slog.Debug("valid file", "fn", files[i], "format", format, "numFiles", numFiles, "numBytes", numBytes, "dateStart", dateStart, "dateEnd", dateEnd)
-		dateStartStr := NODATE
-		dateEndStr := NODATE
+
+		// print summary of this file
+		fmt.Printf("%-"+strconv.Itoa(longestFileName)+"s  ", files[i])
+		fmt.Printf("%9sx  ", intAsStringWithCommas(numFiles))
+
 		if dateStart != "ffffffff" {
 			var i int64
 			var t time.Time
 
 			i, _ = strconv.ParseInt(dateStart, 16, 64)
 			t = time.Unix(i, 0)
-			dateStartStr = t.Format(time.RFC3339)[0:10]
+			dateStartStr := t.Format(time.RFC3339)[0:10]
 
 			i, _ = strconv.ParseInt(dateEnd, 16, 64)
 			t = time.Unix(i, 0)
-			dateEndStr = t.Format(time.RFC3339)[0:10]
-		}
+			dateEndStr := t.Format(time.RFC3339)[0:10]
 
-		// print summary of this file
-		fmt.Printf("%-"+strconv.Itoa(longestFileName)+"s  ", files[i])
-		fmt.Printf("%9sx  ", intAsStringWithCommas(numFiles))
-
-		if format == 5 {
 			fmt.Printf("%10s  %10s", dateStartStr, dateEndStr)
-			fmt.Printf("%19s", intAsStringWithCommas(numBytes))
+
+			if numBytes != 0 {
+				fmt.Printf("%19s", intAsStringWithCommas(numBytes))
+			}
 		}
 		fmt.Println()
 	}
