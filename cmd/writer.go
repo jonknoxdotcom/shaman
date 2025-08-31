@@ -55,6 +55,7 @@ func writeInit(fnw string) *bufio.Writer {
 
 // verbosity: 0=nothing, 1=dots, 2=explanation line
 func writeRecord(w *bufio.Writer, amWriting bool, format int, verbosity int, tag string, shab64 string, modt string, size string, name string, flags string) {
+	// fmt.Println("WRITING", tag, storeLine(name))
 	// type and counters
 	msg := ""
 	trail := ""
@@ -112,6 +113,7 @@ func writeRecord(w *bufio.Writer, amWriting bool, format int, verbosity int, tag
 			_, shab64, _ = getFileSha256(name) // horrible - to be resolved
 		}
 		//fmt.Println(format)
+		name = storeLine(name)
 		switch format {
 		case 1:
 			// anonymise to SHA256 only

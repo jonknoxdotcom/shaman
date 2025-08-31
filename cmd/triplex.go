@@ -45,7 +45,9 @@ func walkTreeYieldFilesToChannel(startpath string, c chan triplex, nodot bool) {
 				continue
 			}
 
-			name := path.Join(startpath, entry.Name())
+			// returned name is unescaped filename that can be used to open the target
+			name := restoreLine(path.Join(startpath, entry.Name()))
+			// name := path.Join(startpath, entry.Name())
 			info, err := entry.Info()
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Skipping file: %s\n", name)

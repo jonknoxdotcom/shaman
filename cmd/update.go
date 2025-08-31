@@ -39,6 +39,7 @@ func init() {
 	updateCmd.Flags().BoolVarP(&cli_overwrite, "overwrite", "o", false, "Replace input .ssf with updated one (if changed)")
 	updateCmd.Flags().BoolVarP(&cli_rehash, "re-hash", "r", false, "Re-hash files for maximum integrity (compromise detection)")
 	updateCmd.Flags().BoolVarP(&cli_verbose, "verbose", "v", false, "Give running commentary of update")
+	updateCmd.Flags().BoolVarP(&cli_nodot, "no-dot", "", false, "Do not include files/directories beginning '.'")
 }
 
 // ----------------------- Update function below this line -----------------------
@@ -125,6 +126,7 @@ func upd(args []string) {
 	}
 
 	trip_name, trip_modt, trip_size := getNextTriplex(fileQueue)
+	// fmt.Println("Tri #1: ", trip_name, trip_modt, trip_size)
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		// process the line from scanner (from the SSF file)
@@ -147,7 +149,9 @@ func upd(args []string) {
 		ssf_shab64 := s[0:43]
 		ssf_modtime := s[43:51]
 		ssf_length := s[51:pos]
-		ssf_name := s[pos+2:]
+		ssf_name := restoreLine(s[pos+2:]) // *FIXME* for "A" records
+
+		// fmt.Println("SSF #1: ", ssf_name, ssf_modtime, ssf_length)
 
 		// 1/5 Check for empty triplex
 		if trip_name == "" {
@@ -162,6 +166,7 @@ func upd(args []string) {
 				writeRecord(w, amWriting, form, verbosity, "N", "", trip_modt, trip_size, trip_name, "")
 
 				trip_name, trip_modt, trip_size = getNextTriplex(fileQueue)
+				// fmt.Println("Tri #2: ", trip_name, trip_modt, trip_size)
 				if trip_name == "" {
 					break
 				}
@@ -199,6 +204,8 @@ func upd(args []string) {
 			}
 
 			trip_name, trip_modt, trip_size = getNextTriplex(fileQueue)
+			// fmt.Println("Tri #3: ", trip_name, trip_modt, trip_size)
+
 			continue
 		}
 
@@ -211,11 +218,14 @@ func upd(args []string) {
 	// 5/5 Input file exhausted - check for 1x pending, and tail of triplex channel
 	if trip_name == "" {
 		trip_name, trip_modt, trip_size = getNextTriplex(fileQueue)
+		// fmt.Println("Tri #4: ", trip_name, trip_modt, trip_size)
+
 	}
 	for trip_name != "" {
 		writeRecord(w, amWriting, form, verbosity, "N", "", trip_modt, trip_size, trip_name, "") // new
 
 		trip_name, trip_modt, trip_size = getNextTriplex(fileQueue)
+		// fmt.Println("Tri #5: ", trip_name, trip_modt, trip_size)
 	}
 
 	// End of processing - report the number of changes

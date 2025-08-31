@@ -62,6 +62,15 @@ func isHexadecimal(s string) bool {
 }
 
 func dir(args []string) {
+
+	// test := "hello\nthere\\jon"
+	// fmt.Println("initial", test)
+	// test2 := storeLine(test)
+	// fmt.Println("after storeLine", test2)
+	// test3 := restoreLine(test2)
+	// fmt.Println("after restore", test3)
+	// os.Exit(0)
+
 	// Process CLI and perform sanity checks
 	num, files, found := getAnySort(args)
 	slog.Debug("cli handler", "num", num, "files", files, "found", found)

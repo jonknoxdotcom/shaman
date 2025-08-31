@@ -79,6 +79,45 @@ func abort(rc int, reason string) {
 	os.Exit(rc)
 }
 
+// storeLine converts a filename to something you can print on a single line.
+// This is needed because it is possible to embed newlines (for instance) in a filename.
+// Control chars can corrupt the file format. The SSF is designed to be resilient to this.
+func storeLine(s string) string {
+	var t string
+	for _, rune := range s { // rune is actually an int32
+		if rune < 32 {
+			t += fmt.Sprintf("\\x%02x", rune)
+		} else if rune == '\\' {
+			t += "\\\\"
+		} else {
+			t += string(rune) // yes, you have to do this, but compiler optz'es
+		}
+		//		fmt.Printf("%d/%+q ", n, rune)
+	}
+	return t
+
+	// s = strings.Replace(s, "\\", "\\\\", -1)
+	// s = strings.Replace(s, "\r", "\\r", -1)
+	// s = strings.Replace(s, "\n", "\\n", -1)
+	// // need more control chars?
+	// return s
+}
+
+// restoreLine is designed as the identity function to storeLine.
+// Will take a 'stored filename' form (used in the SSFs) and return
+// an exact string matching what the filesystem would call that file.
+// Note: however, at the moment, it only reverses CR and LF.  *FIXME*
+func restoreLine(s string) string {
+	// s = strings.Replace(s, "\\x0a", string(10), -1)
+	s = strings.Replace(s, "\\x0a", "\x0a", -1) // LF (NL)
+	// s = strings.Replace(s, "\\x0d", string(13), -1)
+	s = strings.Replace(s, "\\x0c", "\x0c", -1) // FF
+	s = strings.Replace(s, "\\x0d", "\x0d", -1) // CR
+	s = strings.Replace(s, "\\\\", "\\", -1)
+	return s
+}
+
+// bashEscape used to amend quoted filenames to be resistant to shell metacharacters.
 func bashEscape(fn string) string {
 	fn = strings.Replace(fn, "\"", "\\\"", -1)
 	fn = strings.Replace(fn, "$", "\\$", -1)
