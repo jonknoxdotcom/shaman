@@ -82,13 +82,20 @@ func abort(rc int, reason string) {
 // storeLine converts a filename to something you can print on a single line.
 // This is needed because it is possible to embed newlines (for instance) in a filename.
 // Control chars can corrupt the file format. The SSF is designed to be resilient to this.
+// THIS IS NOT WORKING
 func storeLine(s string) string {
 	var t string
 	for _, rune := range s { // rune is actually an int32
+		//if rune < 32 || (rune > 126 && rune <= 255) {
 		if rune < 32 {
 			t += fmt.Sprintf("\\x%02x", rune)
 		} else if rune == '\\' {
 			t += "\\\\"
+			// } else if rune >= 256 && rune <= 65535 {
+			// 	// NB missing character rune is 65533
+			// 	t += fmt.Sprintf("\\u%04x", rune)
+			// } else if rune >= 65536 {
+			// 	t += fmt.Sprintf("\\x%06x", rune)
 		} else {
 			t += string(rune) // yes, you have to do this, but compiler optz'es
 		}
@@ -119,9 +126,10 @@ func restoreLine(s string) string {
 
 // bashEscape used to amend quoted filenames to be resistant to shell metacharacters.
 func bashEscape(fn string) string {
-	fn = strings.Replace(fn, "\"", "\\\"", -1)
-	fn = strings.Replace(fn, "$", "\\$", -1)
-	fn = strings.Replace(fn, "~", "\\~", -1)
+	fn = strings.Replace(fn, "\"", "\\\"", -1) // quote in filename would break our templates
+	fn = strings.Replace(fn, "$", "\\$", -1)   // causes shell variable expansion
+	fn = strings.Replace(fn, "~", "\\~", -1)   // causes user directory lookup
+	fn = strings.Replace(fn, "*", "\\*", -1)   // yes, some people put stars in filenames
 	return fn
 }
 
