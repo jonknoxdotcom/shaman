@@ -56,6 +56,8 @@ var cli_disclose bool = false   // add time-series disclosure
 var cli_showform bool = false // determined format
 var cli_strict bool = false   // strict failsafe rules (e.g. missing file raises error)
 
+var cli_ending string = "" // only consider files with this ending
+
 // ----------------------- General
 
 // conditionalMessage used to reduce clutter for CLI application with a 'verbose' switch.

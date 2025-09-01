@@ -34,6 +34,7 @@ func init() {
 	biggestCmd.Flags().StringVarP(&cli_discard, "discard", "", "", "Path to exclude from results")
 	biggestCmd.Flags().BoolVarP(&cli_equal, "equal", "e", false, "Show subsequent equal size or hash")
 	biggestCmd.Flags().BoolVarP(&cli_nodot, "no-dot", "", false, "Do not include files/directories beginning '.'")
+	biggestCmd.Flags().StringVarP(&cli_ending, "ends-with", "", "", "Only consider files with this ending")
 }
 
 // ----------------------- "Biggest" (largest) function below this line -----------------------
@@ -91,6 +92,14 @@ func bigFile(fn string, prefix string) int {
 			continue
 		}
 
+		// drop if 'ends-with' is enabled
+		// fmt.Println("ending", name[len(name)-len(cli_ending):])
+		if cli_ending != "" && (len(cli_ending) > len(name) || name[len(name)-len(cli_ending):] != cli_ending) {
+			// reject file - wrong ending
+			// fmt.Println("reject", name)
+			continue
+		}
+
 		thresh = topAdd(key, id, name)
 		linesAdded++
 	}
@@ -128,6 +137,14 @@ func bigLocal(path string) int {
 		// get rest of fields
 		id := filerec.filename
 		name := filerec.filename
+
+		// drop if 'ends-with' is enabled
+		// fmt.Println("ending", name[len(name)-len(cli_ending):])
+		if cli_ending != "" && (len(cli_ending) > len(name) || name[len(name)-len(cli_ending):] != cli_ending) {
+			// reject file - wrong ending
+			// fmt.Println("reject", name)
+			continue
+		}
 
 		_ = topAdd(key, id, name)
 	}
