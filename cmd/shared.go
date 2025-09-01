@@ -115,21 +115,19 @@ func storeLine(s string) string {
 // an exact string matching what the filesystem would call that file.
 // Note: however, at the moment, it only reverses CR and LF.  *FIXME*
 func restoreLine(s string) string {
-	// s = strings.Replace(s, "\\x0a", string(10), -1)
-	s = strings.Replace(s, "\\x0a", "\x0a", -1) // LF (NL)
-	// s = strings.Replace(s, "\\x0d", string(13), -1)
-	s = strings.Replace(s, "\\x0c", "\x0c", -1) // FF
-	s = strings.Replace(s, "\\x0d", "\x0d", -1) // CR
-	s = strings.Replace(s, "\\\\", "\\", -1)
+	s = strings.ReplaceAll(s, "\\x0a", "\x0a") // LF (NL)
+	s = strings.ReplaceAll(s, "\\x0c", "\x0c") // FF
+	s = strings.ReplaceAll(s, "\\x0d", "\x0d") // CR
+	s = strings.ReplaceAll(s, "\\\\", "\\")
 	return s
 }
 
 // bashEscape used to amend quoted filenames to be resistant to shell metacharacters.
 func bashEscape(fn string) string {
-	fn = strings.Replace(fn, "\"", "\\\"", -1) // quote in filename would break our templates
-	fn = strings.Replace(fn, "$", "\\$", -1)   // causes shell variable expansion
-	fn = strings.Replace(fn, "~", "\\~", -1)   // causes user directory lookup
-	fn = strings.Replace(fn, "*", "\\*", -1)   // yes, some people put stars in filenames
+	fn = strings.ReplaceAll(fn, "\"", "\\\"") // quote in filename would break our templates
+	fn = strings.ReplaceAll(fn, "$", "\\$")   // causes shell variable expansion
+	fn = strings.ReplaceAll(fn, "~", "\\~")   // causes user directory lookup
+	fn = strings.ReplaceAll(fn, "*", "\\*")   // yes, some people put stars in filenames
 	return fn
 }
 

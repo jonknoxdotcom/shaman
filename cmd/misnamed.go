@@ -70,7 +70,6 @@ func mis(args []string) {
 	for filerec := range fileQueue {
 
 		escaped := storeLine(filerec.filename)
-
 		if escaped != filerec.filename {
 			fmt.Printf("%s\n%s\n\n", filerec.filename, escaped)
 			error_files++

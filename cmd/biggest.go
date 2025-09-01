@@ -139,8 +139,8 @@ func big(args []string) {
 	num, files, found := getSSFs(args)
 	slog.Debug("cli handler", "num", num, "files", files, "found", found)
 	switch true {
-	case num > 20:
-		abort(8, "Too many .ssf files specified - twenty is enough")
+	case num > 99:
+		abort(8, "Too many .ssf files specified - 99 is enough!")
 	case num < 0:
 		abort(9, "Need an SSF file to perform largest file check")
 	case num >= 1 && !found[0]:

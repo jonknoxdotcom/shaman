@@ -103,7 +103,7 @@ func writeRecord(w *bufio.Writer, amWriting bool, format int, verbosity int, tag
 		if nbytes > 1*1024*1024 {
 			trail += " (" + intAsStringWithCommas(int64(nbytes/(1024*1024))) + "MB)"
 		}
-		fmt.Println("  " + msg + trail)
+		fmt.Println("  " + storeLine(msg) + trail)
 	}
 
 	// pushing to output buffer
