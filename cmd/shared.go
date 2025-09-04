@@ -21,7 +21,7 @@ import (
 // ----------------------- Global variables (shared across 'cmd' package)
 
 var cli_path string = ""    // Path to folder where scan will be performed [cobra]
-var cli_format int = 0      // Format (0=default, 1=sha, 2=1+mod, 3=2+size, 4=3+name, 5=4+annotate, 6/7/8=unused, 9=sha256sum)
+var cli_format int = 1      // Format (0=default, 1=sha, 2=1+mod, 3=2+size, 4=3+name, 5=4+annotate, 6/7/8=unused, 9=sha256sum)
 var cli_dupes bool = false  // Show duplicates as comments at end of run
 var cli_grand bool = false  // Show grand total of files/bytes total at end
 var cli_rehash bool = false // Perform deep integrity check by regenerating file hash and comparing (slow)

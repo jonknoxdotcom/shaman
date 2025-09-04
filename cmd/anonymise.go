@@ -5,13 +5,11 @@ package cmd
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"log/slog"
 	"maps"
 	"os"
 	"slices"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -24,7 +22,7 @@ var anonymiseCmd = &cobra.Command{
 when you want to have a very small .ssf for the purposes of checking for the presence of files without wanting to 
 disclose the filenames such as a list of customer names, account codes or other related personally-identifiable 
 information (PII).  An .ssf with only hashes can still be used for comparisons and detections.`,
-	Aliases: []string{"ano", "anonymize"},
+	Aliases: []string{"anonymize", "ano"},
 	Run: func(cmd *cobra.Command, args []string) {
 		ano(args)
 	},
@@ -34,84 +32,12 @@ func init() {
 	rootCmd.AddCommand(anonymiseCmd)
 
 	anonymiseCmd.Flags().StringVarP(&cli_path, "path", "p", "", "Path to directory to scan (default is current directory)")
-	anonymiseCmd.Flags().IntVarP(&cli_format, "format", "f", 1, "Format/anonymisation level 1..5 (default: 1)")
+	anonymiseCmd.Flags().IntVarP(&cli_format, "format", "f", 1, "Format/anonymisation level 1..5")
 	anonymiseCmd.Flags().BoolVarP(&cli_verbose, "verbose", "v", false, "Give running commentary of anonymisation")
 	anonymiseCmd.Flags().BoolVarP(&cli_nodot, "no-dot", "", false, "Drop any files/directories beginning '.' if found in the source")
 	anonymiseCmd.Flags().BoolVarP(&cli_noempty, "no-empty", "", false, "Do not allow hash for empty file to appear")
-	anonymiseCmd.Flags().IntVarP(&cli_chaff, "chaff", "", 0, "Chaff volume - approx number of records to add (default: 0 = off)")
+	anonymiseCmd.Flags().IntVarP(&cli_chaff, "chaff", "", 0, "Chaff volume - approx number of records to add (default 0 = off)")
 }
-
-// ----------------------- Reader module -----------------------
-
-// nextLineMinimal takes a scanner file and returns the next record's SHA + undecoded line. It also tracks line number.
-// The returned line will have valid base64 and hex (if present) in all the right places. It may be format 1,2,3,4,5.
-// The tracking line number is always returned, and can be relied upon and quoted in an error message if required.
-// This routine is optimised to fail quickly if fed a file that is not SSF.
-func nextLineMinimal(scanner *bufio.Scanner, trackingLine int64) (newTrackingLine int64, shab64 string, format int, line string, err error) {
-	for scanner.Scan() {
-		// process the line from scanner (from the SSF file)
-		s := scanner.Text()
-		trackingLine++
-		// fmt.Printf("[nLM reads] %d: [%s]\n", trackingLine, s)
-
-		// drop comments or empty lines
-		if len(s) == 0 || s[0:1] == "#" {
-			continue
-		}
-
-		// check for sufficient line to check for SHA / validate SHA characters
-		if len(s) < 43 || !isBase64(s[0:43]) {
-			// must be a bad line - too short or not right characters (caller likely to abort read)
-			return trackingLine, "", -1, s, errors.New("invalid format #1")
-		}
-
-		// just the hash is fine
-		if len(s) == 43 {
-			// format 1: just SHA
-			return trackingLine, s[0:43], 1, s, nil
-		}
-
-		// rest of initial field should be hex
-		pos := strings.IndexByte(s, 32)
-		if pos == -1 {
-			// there's no annotation or name
-			hexStream := s[43:]
-			if !isHexadecimal(hexStream) {
-				return trackingLine, "", -1, s, errors.New("invalid format #2")
-			}
-			if len(hexStream) == 8 {
-				// format 2: just SHA+modtime
-				return trackingLine, s[0:43], 2, s, nil
-			}
-			if len(hexStream) >= 12 && len(hexStream) <= 22 {
-				// format 3: just SHA+modtime+size
-				return trackingLine, s[0:43], 3, s, nil
-			}
-			return trackingLine, "", -1, s, errors.New("invalid format #3")
-		} else {
-			// there's a space after the presumed hex
-			hexStream := s[43:pos]
-			// fmt.Println("[" + hexStream + "]")
-			if len(hexStream) >= 12 && len(hexStream) <= 22 {
-				// format 5: just SHA+modtime+size
-				if s[pos+1:pos+2] == ":" {
-					return trackingLine, s[0:43], 5, s, nil
-				} else {
-					return trackingLine, s[0:43], 4, s, nil
-				}
-			}
-			return trackingLine, "", -1, s, errors.New("invalid format #4")
-		}
-	}
-
-	// fall out (Scan failed) - give an empty string
-	return trackingLine, "", -1, "", nil
-}
-
-// // extractSSFLine is meant to be called after nextLineMinimal if more than a valid hash is wanted.
-// func extractSSFLine(s string) (shab64 string, modtime string, length string, name string, annotations string) {
-
-// }
 
 // ----------------------- Anonymise function below this line -----------------------
 
@@ -153,14 +79,13 @@ func ano(args []string) {
 		fmt.Println("Output file '" + files[1] + "' will be overwritten")
 	}
 
-	// create reader from fnr get got from getSSF
+	// create scanner from fnr (fails if file cannot be opened, missing or has permissions errors)
 	fnr = files[0]
-	var r *os.File
-	r, err := os.Open(fnr)
-	if err != nil {
+	scan := new(readSSF)
+	if scan.open(fnr) != nil {
 		abort(4, "Internal error #4: ")
 	}
-	defer r.Close()
+	defer scan.close()
 
 	// create writer as same file with ".temp" suffix
 	switch num {
@@ -192,21 +117,21 @@ func ano(args []string) {
 
 	// Loop
 	// var err error     // error object
-	var shab64 string // sha
+	// var shab64 string // sha
 	// var format int    // format
-	var s string     // line contents
-	var lineno int64 // needed for error reporting on .ssf file corruptions
+	// var s string     // line contents
+	// var lineno int64 // needed for error reporting on .ssf file corruptions
 	var errorTolerance int = 5
 	var shaMap = map[string]string{} // SHA to hex data (or empty string) -- just using b64 string for time being *FIXME*
-	scanner := bufio.NewScanner(r)
+
 	for true {
 		// err, lineno, shab64, format, s = nextLineMinimal(scanner, lineno)
-		lineno, shab64, _, s, err = nextLineMinimal(scanner, lineno)
+		shab64, _, lineno, s, err := scan.nextLine()
 		// fmt.Println(err, lineno, shab64, format, s)
 		if err != nil {
 			errorTolerance--
 			if errorTolerance >= 0 {
-				fmt.Printf("Error: ignoring - %s in %s at line %d\n", err, fnr, lineno)
+				fmt.Printf("Error: ignoring line %d of %s - %s\n", lineno, fnr, err)
 				continue
 			} else {
 				abort(1, "Too many errors in "+fnr+" - giving up")
@@ -228,6 +153,23 @@ func ano(args []string) {
 	// Chaffing
 	if cli_chaff > 0 {
 		fmt.Printf("Adding %d chaff records\n", cli_chaff)
+	}
+
+	// Empty hash remover
+	const emptySHAhex string = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+	const emptySHAb64 = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU"
+	_, ok := shaMap[emptySHAb64]
+	if cli_noempty {
+		if ok {
+			fmt.Println("Removed empty hash")
+			delete(shaMap, emptySHAb64)
+		} else {
+			fmt.Println("No empty hash found")
+		}
+	} else {
+		if ok {
+			fmt.Println("Warning: empty hash is present")
+		}
 	}
 
 	// Sort the SHAs

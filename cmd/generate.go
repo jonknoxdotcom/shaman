@@ -33,7 +33,7 @@ func init() {
 	rootCmd.AddCommand(generateCmd)
 
 	generateCmd.Flags().StringVarP(&cli_path, "path", "p", "", "Path to directory to scan (default is current directory)")
-	generateCmd.Flags().IntVarP(&cli_format, "format", "f", 0, "Format/anonymisation level 1..5 or 9")
+	generateCmd.Flags().IntVarP(&cli_format, "format", "f", 0, "Format/anonymisation level (1..5 or 9")
 	generateCmd.Flags().BoolVarP(&cli_dupes, "dupes", "d", false, "Whether to show dupes (as comments) on completion")
 	generateCmd.Flags().BoolVarP(&cli_grand, "grand-totals", "g", false, "Display grand totals of bytes/files on completion")
 	generateCmd.Flags().BoolVarP(&cli_verbose, "verbose", "v", false, "Give running commentary of update")
