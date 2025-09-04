@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"bufio"
-	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"os"
@@ -42,24 +41,6 @@ func init() {
 }
 
 // ----------------------- Directory function below this line -----------------------
-
-func isBase64(s string) bool {
-	_, err := base64.StdEncoding.DecodeString(s + "=")
-	return err == nil
-}
-
-// isHexadecimal returns validation of likely hexadecimal number that can be odd or even nybbles long.
-// *FIXME* possible refactor the loop logic
-func isHexadecimal(s string) bool {
-	// fmt.Println("hex:", s)
-	for i := 0; i < len(s); i++ {
-		ch := s[i : i+1]
-		if !strings.Contains("0123456789abcdef", ch) {
-			return false
-		}
-	}
-	return true
-}
 
 func dir(args []string) {
 

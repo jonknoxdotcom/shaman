@@ -65,6 +65,8 @@ func upd(args []string) {
 		abort(9, "Input file not specified")
 	case !found[0]:
 		abort(6, "SSF file '"+files[0]+"' does not exist")
+	case num > 1 && cli_overwrite:
+		abort(6, "Can't request overwrite of input SSF and give destination file")
 	case num > 1 && found[1]:
 		fmt.Println("Output file '" + files[1] + "' will be overwritten")
 	}
@@ -141,7 +143,16 @@ func upd(args []string) {
 
 		// chop up s to get fields *FIXME* add annotation handling here **
 		pos := strings.IndexByte(s, 32)
-		if pos == -1 || pos < 55 {
+		if pos == -1 {
+			if len(s) == 43 && isBase64(s[0:43]) {
+				abort(1, "Cannot update an anonymous SSF (file is format 1)")
+				break
+			}
+			if isHexadecimal(s[43:]) {
+				abort(1, "Cannot update an anonymous SSF (file is format 2 or 3)")
+				break
+			}
+
 			fmt.Printf("Deleting line %d - Invalid format on line (pos %d)\n", lineno, pos)
 			ndel++
 			continue

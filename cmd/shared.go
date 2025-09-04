@@ -6,6 +6,7 @@ package cmd
 import (
 	"bufio"
 	"crypto/sha256"
+	"encoding/base64"
 	b64 "encoding/base64"
 	"fmt"
 	"io"
@@ -57,6 +58,9 @@ var cli_showform bool = false // determined format
 var cli_strict bool = false   // strict failsafe rules (e.g. missing file raises error)
 
 var cli_ending string = "" // only consider files with this ending
+
+var cli_noempty = false // do not allow hash for empty file to appear
+var cli_chaff = 0       // chaff volume - approx number of records to add (default: 0 = off)
 
 // ----------------------- General
 
@@ -594,4 +598,24 @@ func ssfCollectRead(fnr string, hits map[string]string, format int) (int, int) {
 	}
 
 	return len(hits), rows
+}
+
+// ---- Checkers
+
+func isBase64(s string) bool {
+	_, err := base64.StdEncoding.DecodeString(s + "=")
+	return err == nil
+}
+
+// isHexadecimal returns validation of likely hexadecimal number that can be odd or even nybbles long.
+// *FIXME* possible refactor the loop logic
+func isHexadecimal(s string) bool {
+	// fmt.Println("hex:", s)
+	for i := 0; i < len(s); i++ {
+		ch := s[i : i+1]
+		if !strings.Contains("0123456789abcdef", ch) {
+			return false
+		}
+	}
+	return true
 }
