@@ -31,10 +31,8 @@ information (PII).  An .ssf with only hashes can still be used for comparisons a
 func init() {
 	rootCmd.AddCommand(anonymiseCmd)
 
-	anonymiseCmd.Flags().StringVarP(&cli_path, "path", "p", "", "Path to directory to scan (default is current directory)")
-	anonymiseCmd.Flags().IntVarP(&cli_format, "format", "f", 1, "Format/anonymisation level 1..5")
 	anonymiseCmd.Flags().BoolVarP(&cli_verbose, "verbose", "v", false, "Give running commentary of anonymisation")
-	anonymiseCmd.Flags().BoolVarP(&cli_nodot, "no-dot", "", false, "Drop any files/directories beginning '.' if found in the source")
+	anonymiseCmd.Flags().IntVarP(&cli_format, "format", "f", 1, "Format/anonymisation level 1..4")
 	anonymiseCmd.Flags().BoolVarP(&cli_noempty, "no-empty", "", false, "Do not allow hash for empty file to appear")
 	anonymiseCmd.Flags().IntVarP(&cli_chaff, "chaff", "", 0, "Chaff volume - approx number of records to add (default 0 = off)")
 }
@@ -76,7 +74,7 @@ func ano(args []string) {
 	case !found[0]:
 		abort(6, "SSF file '"+files[0]+"' does not exist")
 	case num > 1 && found[1]:
-		fmt.Println("Output file '" + files[1] + "' will be overwritten")
+		fmt.Println("Warning: output file '" + files[1] + "' will be overwritten")
 	}
 
 	// create scanner from fnr (fails if file cannot be opened, missing or has permissions errors)
@@ -87,33 +85,11 @@ func ano(args []string) {
 	}
 	defer scan.close()
 
-	// create writer as same file with ".temp" suffix
-	switch num {
-	case 1:
-		// One file given
-		fnw = ""
-	case 2:
-		// Two files given - from A to B
+	// create writer
+	if num == 2 {
 		fnw = files[1]
-	default:
-		// (should not happen)
-		abort(3, "unexpected update")
 	}
-
-	// open writing buffer (if used)
 	w = writeInit(fnw)
-	// amWriting := (fnw != "")
-
-	// get tree start, and initiate producer channel
-	var startpath string = "."
-	if cli_path != "" {
-		startpath = cli_path // add validation here
-	}
-	fileQueue := make(chan triplex, 4096)
-	go func() {
-		defer close(fileQueue)
-		walkTreeYieldFilesToChannel(startpath, fileQueue, cli_nodot)
-	}()
 
 	// Loop
 	// var err error     // error object
@@ -147,12 +123,12 @@ func ano(args []string) {
 	if len(shaMap) == 0 {
 		abort(1, "Nothing found to anonymise")
 	} else {
-		fmt.Printf("Found %d records\n", len(shaMap))
+		conditionalMessage(cli_verbose, fmt.Sprintf("Found %d records", len(shaMap)))
 	}
 
 	// Chaffing
 	if cli_chaff > 0 {
-		fmt.Printf("Adding %d chaff records\n", cli_chaff)
+		conditionalMessage(cli_verbose, fmt.Sprintf("Adding %d chaff records", cli_chaff))
 	}
 
 	// Empty hash remover
@@ -161,24 +137,24 @@ func ano(args []string) {
 	_, ok := shaMap[emptySHAb64]
 	if cli_noempty {
 		if ok {
-			fmt.Println("Removed empty hash")
+			conditionalMessage(cli_verbose, "Removing empty hash")
 			delete(shaMap, emptySHAb64)
 		} else {
-			fmt.Println("No empty hash found")
+			conditionalMessage(cli_verbose, "No empty hash found")
 		}
 	} else {
 		if ok {
-			fmt.Println("Warning: empty hash is present")
+			conditionalMessage(cli_verbose, "Warning: empty hash is present")
 		}
 	}
 
 	// Sort the SHAs
-	fmt.Printf("Sorting to deny position analysis\n")
+	conditionalMessage(cli_verbose, "Sorting to deny position analysis")
 	var ordered []string
 	ordered = slices.Sorted(maps.Keys(shaMap))
 
 	// Write out
-	fmt.Printf("Writing %d record to output\n", len(shaMap))
+	conditionalMessage(cli_verbose, fmt.Sprintf("Writing %d records to output", len(shaMap)))
 	for _, k := range ordered {
 		fmt.Fprintln(w, k+shaMap[k])
 	}
