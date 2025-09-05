@@ -10,6 +10,7 @@ import (
 	"maps"
 	"os"
 	"slices"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -39,6 +40,13 @@ func init() {
 
 // ----------------------- Anonymise function below this line -----------------------
 
+// CURRENT
+// Example use:
+// sm ano input.ssf 									# format 1 output, no chaff, output to stdout
+// sm ano input.ssf anon.ssf							# format 1 output, no chaff
+// sm ano input.ssf anon.ssf --no-empty 				# format 1 output, no chaff, drops empty record
+
+// TARGET
 // Example use:
 // sm ano input.ssf 									# format 1 output, no chaff, output to stdout
 // sm ano input.ssf anon.ssf							# format 1 output, no chaff
@@ -68,7 +76,7 @@ func ano(args []string) {
 	slog.Debug("cli handler", "num", num, "files", files, "found", found)
 	switch true {
 	case num > 2:
-		abort(8, "Too many .ssf files - expected one or two")
+		abort(8, "Too many .ssf files - expected input, output (optional), exclusions (optional)")
 	case num < 1:
 		abort(9, "Input file not specified")
 	case !found[0]:
@@ -89,37 +97,45 @@ func ano(args []string) {
 	if num == 2 {
 		fnw = files[1]
 	}
-	w = writeInit(fnw)
 
 	// Loop
-	// var err error     // error object
-	// var shab64 string // sha
+	var err error     // error object
+	var shab64 string // sha
 	// var format int    // format
-	// var s string     // line contents
-	// var lineno int64 // needed for error reporting on .ssf file corruptions
+	var s string     // line contents
+	var lineno int64 // needed for error reporting on .ssf file corruptions
 	var errorTolerance int = 5
 	var shaMap = map[string]string{} // SHA to hex data (or empty string) -- just using b64 string for time being *FIXME*
 
+	timeStart := time.Now()
 	for true {
-		// err, lineno, shab64, format, s = nextLineMinimal(scanner, lineno)
-		shab64, _, lineno, s, err := scan.nextLine()
-		// fmt.Println(err, lineno, shab64, format, s)
+		// perform minimal fetch (sha plus unprocessed line), empty sha means exhaustion
+		shab64, _, lineno, s, err = scan.nextSHA() // shab64, format, lineNumber, line, err
+
+		// allow a small number of misformed lines before giving up
 		if err != nil {
 			errorTolerance--
 			if errorTolerance >= 0 {
-				fmt.Printf("Error: ignoring line %d of %s - %s\n", lineno, fnr, err)
+				// temp addition of 's'
+				fmt.Printf("Error: ignoring line %d of %s - %s, (line: %s)\n", lineno, fnr, err, s)
 				continue
 			} else {
 				abort(1, "Too many errors in "+fnr+" - giving up")
 			}
 		}
-		if s == "" {
-			break
-		}
-		shaMap[shab64] = ""
 
-		// fmt.Fprintf(w, "received l=%d, f=%d, sha=%s, s=%s\n", lineno, format, shab64, s)
+		if shab64 == "" {
+			break
+		} else {
+			shaMap[shab64] = ""
+		}
 	}
+	timeTaken := time.Since(timeStart)
+	timems := int64(time.Since(timeStart) * 1000000 / time.Second)
+	lps := 1000 * lineno / timems
+	slog.Debug("Anonymisation read", "file", fnr, "lines", lineno, "shas", len(shaMap), "elapsedms", int(timeTaken/1000000), "lps", lps)
+
+	// Is there anything to do?
 	if len(shaMap) == 0 {
 		abort(1, "Nothing found to anonymise")
 	} else {
@@ -155,6 +171,7 @@ func ano(args []string) {
 
 	// Write out
 	conditionalMessage(cli_verbose, fmt.Sprintf("Writing %d records to output", len(shaMap)))
+	w = writeInit(fnw)
 	for _, k := range ordered {
 		fmt.Fprintln(w, k+shaMap[k])
 	}

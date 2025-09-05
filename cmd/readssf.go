@@ -56,14 +56,14 @@ func (reader *readSSF) close() {
 // The returned line will have valid base64 and hex (if present) in all the right places. It may be format 1,2,3,4,5.
 // The tracking line number is always returned, and can be relied upon and quoted in an error message if required.
 // This routine is optimised to fail quickly if fed a file that is not SSF.
-func (reader *readSSF) nextLine() (shab64 string, format int, lineNumber int64, line string, err error) {
+func (reader *readSSF) nextSHA() (shab64 string, format int, lineNumber int64, line string, err error) {
 	reader.buffer = ""
 	for reader.scanner.Scan() {
 		// process the line from scanner (from the SSF file)
 		s := reader.scanner.Text()
 		reader.trackingLine++
 
-		// drop comments or empty lines
+		// drop comments or empty lines and try again
 		if len(s) == 0 || s[0:1] == "#" {
 			continue
 		}
@@ -126,11 +126,13 @@ func (reader *readSSF) nextLine() (shab64 string, format int, lineNumber int64, 
 
 // allFields returns the values of the last validly read line from the SSF file.
 // The fields are in the stored format - i.e. sha-base64 for SHA256, and hexadecimal for mod-time and byte-size.
+// This is the quicker function for rapid mass triage.  Name is not restored.
 func (reader *readSSF) allFields() (shab64 string, format int, modtime string, length string, name string, annotations []string) {
 	return reader.shaBase64, 5, "68b482da", "0006", "file.jpg", []string{"P800x600", "Fjpg"}
 }
 
 // allValues is similar to allFields() except it translate field format into native format for the values.
+// The sha is in the smaller binary form, the mod-time and size are int64s, and the annotations are separated
 func (reader *readSSF) allValues() (sha binsha, format int, modtime int64, length int64, name string, annotations []string) {
 	return shaBase64ToShaBinary(reader.shaBase64), 5, 1756660442, 6, "file.jpg", []string{"P800x600", "Fjpg"}
 }
