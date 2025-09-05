@@ -131,9 +131,9 @@ func ano(args []string) {
 		}
 	}
 	timeTaken := time.Since(timeStart)
-	timems := int64(time.Since(timeStart) * 1000000 / time.Second)
-	lps := 1000 * lineno / timems
-	slog.Debug("Anonymisation read", "file", fnr, "lines", lineno, "shas", len(shaMap), "elapsedms", int(timeTaken/1000000), "lps", lps)
+	timeus := int64(time.Since(timeStart) * 1000000 / time.Second)
+	lps := 1000000 * lineno / timeus
+	slog.Debug("Anonymisation read", "file", fnr, "lines", lineno, "shas", len(shaMap), "elapsedus", int(timeTaken/1000000), "lps", lps)
 
 	// Is there anything to do?
 	if len(shaMap) == 0 {
