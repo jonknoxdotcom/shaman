@@ -4,6 +4,7 @@ make build
 go install
 
 rm lps.txt
+touch anno.ssf
 
 echo Settling...
 sleep 5
@@ -18,4 +19,5 @@ DEBUG=1 shaman ano desktop.ssf anno.ssf | grep "Anonymisation read" | jq .lps >>
 done
 
 awk '{ sum += $1 } END { print sum/10 }' lps.txt
-
+cat lps.txt
+rm lps.txt

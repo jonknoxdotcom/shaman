@@ -99,20 +99,28 @@ func ano(args []string) {
 	}
 
 	// Loop
-	var err error     // error object
-	var shab64 string // sha
-	// var format int    // format
-	var s string     // line contents
-	var lineno int64 // needed for error reporting on .ssf file corruptions
-	var errorTolerance int = 5
 	var shaMap = map[string]string{} // SHA to hex data (or empty string) -- just using b64 string for time being *FIXME*
+	var shab64 string
+	var err error // error object
+	var errorTolerance int = 5
+	var lineno int64 // needed for error reporting on .ssf file corruptions
+
+	// var format int    // format
+	var s string // line contents
 
 	timeStart := time.Now()
 	for true {
-		// perform minimal fetch (sha plus unprocessed line), empty sha means exhaustion
+		// perform minimal fetch, err for bad files, no err + empty sha means exhaustion
 		shab64, _, lineno, s, err = scan.nextSHA() // shab64, format, lineNumber, line, err
 
-		// allow a small number of misformed lines before giving up
+		// golden path - store lines and go again
+		if shab64 != "" {
+			// store presence (or more) here
+			shaMap[shab64] = ""
+			continue
+		}
+
+		// infrequent - allow a small number of misformed lines before giving up
 		if err != nil {
 			errorTolerance--
 			if errorTolerance >= 0 {
@@ -124,10 +132,9 @@ func ano(args []string) {
 			}
 		}
 
+		// infrequent - eof detect
 		if shab64 == "" {
 			break
-		} else {
-			shaMap[shab64] = ""
 		}
 	}
 	timeTaken := time.Since(timeStart)
