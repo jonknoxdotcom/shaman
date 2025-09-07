@@ -20,4 +20,3 @@ done
 
 awk '{ sum += $1 } END { print sum/10 }' lps.txt
 cat lps.txt
-rm lps.txt

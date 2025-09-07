@@ -106,12 +106,11 @@ func ano(args []string) {
 	var lineno int64 // needed for error reporting on .ssf file corruptions
 
 	// var format int    // format
-	var s string // line contents
 
 	timeStart := time.Now()
 	for true {
 		// perform minimal fetch, err for bad files, no err + empty sha means exhaustion
-		shab64, _, lineno, s, err = scan.nextSHA() // shab64, format, lineNumber, line, err
+		shab64, _, lineno, err = scan.nextSHA() // shab64, format, lineNumber, line, err
 
 		// golden path - store lines and go again
 		if shab64 != "" {
@@ -125,7 +124,7 @@ func ano(args []string) {
 			errorTolerance--
 			if errorTolerance >= 0 {
 				// temp addition of 's'
-				fmt.Printf("Error: ignoring line %d of %s - %s, (line: %s)\n", lineno, fnr, err, s)
+				fmt.Printf("Error: ignoring line %d of %s - %s\n", lineno, fnr, err)
 				continue
 			} else {
 				abort(1, "Too many errors in "+fnr+" - giving up")
@@ -152,22 +151,21 @@ func ano(args []string) {
 	// Chaffing
 	if cli_chaff > 0 {
 		conditionalMessage(cli_verbose, fmt.Sprintf("Adding %d chaff records", cli_chaff))
+		// chaff logic here once format levels have been fixed / for moment, message only
 	}
 
 	// Empty hash remover
-	const emptySHAhex string = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-	const emptySHAb64 = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU"
 	_, ok := shaMap[emptySHAb64]
 	if cli_noempty {
 		if ok {
-			conditionalMessage(cli_verbose, "Removing empty hash")
+			conditionalMessage(cli_verbose, "Removing the empty hash")
 			delete(shaMap, emptySHAb64)
 		} else {
 			conditionalMessage(cli_verbose, "No empty hash found")
 		}
 	} else {
 		if ok {
-			conditionalMessage(cli_verbose, "Warning: empty hash is present")
+			conditionalMessage(cli_verbose, "Warning: the empty hash is present")
 		}
 	}
 
@@ -177,12 +175,26 @@ func ano(args []string) {
 	ordered = slices.Sorted(maps.Keys(shaMap))
 
 	// Write out
-	conditionalMessage(cli_verbose, fmt.Sprintf("Writing %d records to output", len(shaMap)))
+	conditionalMessage(cli_verbose, fmt.Sprintf("Writing %d anonymised records", len(shaMap)))
 	w = writeInit(fnw)
-	for _, k := range ordered {
-		fmt.Fprintln(w, k+shaMap[k])
+	for _, key := range ordered {
+		fmt.Fprintln(w, key+shaMap[key])
 	}
 	w.Flush()
 
-	os.Exit(0) //explicit (because we're a rc=0 or rc=1 depending on whether any changes)
+	// // Write binary version
+	// fnwb := fnw + ".bin"
+	// fb, berr := os.Create(fnwb)
+	// if berr != nil {
+	// 	abort(4, "Cannot create binary file "+fnwb)
+	// }
+	// var bin binsha
+	// for _, j := range ordered {
+	// 	bin = shaBase64ToShaBinary(j)
+	// 	for i := 0; i < 32; i++ {
+	// 		fb.Write(bin[i])
+	// 	}
+	// }
+
+	os.Exit(0) //explicit (because we're an rc=0 or rc=1 depending on whether any changes)
 }
