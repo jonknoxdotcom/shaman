@@ -182,19 +182,28 @@ func ano(args []string) {
 	}
 	w.Flush()
 
-	// // Write binary version
-	// fnwb := fnw + ".bin"
-	// fb, berr := os.Create(fnwb)
-	// if berr != nil {
-	// 	abort(4, "Cannot create binary file "+fnwb)
-	// }
+	// Write binary version
+	fnwb := fnw + ".bin"
+	fb, berr := os.Create(fnwb)
+	if berr != nil {
+		abort(4, "Cannot create binary file "+fnwb)
+	}
 	// var bin binsha
-	// for _, j := range ordered {
-	// 	bin = shaBase64ToShaBinary(j)
-	// 	for i := 0; i < 32; i++ {
-	// 		fb.Write(bin[i])
-	// 	}
-	// }
+	for _, key2 := range ordered {
+		fmt.Println("Saving ", key2)
+		fb.WriteString(key2)
+		fb.WriteString("\n")
+
+		// bin = shaBase64ToShaBinary(key2)
+
+		// fb.Write(bin)
+
+		// fb.Write([]byte(bin))
+
+		// for i := 0; i < 32; i++ {
+		// 	fb.Write(bin[i])
+		// }
+	}
 
 	os.Exit(0) //explicit (because we're an rc=0 or rc=1 depending on whether any changes)
 }
