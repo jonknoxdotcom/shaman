@@ -4,7 +4,6 @@ Copyright © 2025 Jon Knox <jon@k2x.io>
 package cmd
 
 import (
-	"bufio"
 	"fmt"
 	"log/slog"
 	"maps"
@@ -36,6 +35,7 @@ func init() {
 	anonymiseCmd.Flags().IntVarP(&cli_format, "format", "f", 1, "Format/anonymisation level 1..4")
 	anonymiseCmd.Flags().BoolVarP(&cli_noempty, "no-empty", "", false, "Do not allow hash for empty file to appear")
 	anonymiseCmd.Flags().IntVarP(&cli_chaff, "chaff", "", 0, "Chaff volume - approx number of records to add (default 0 = off)")
+	anonymiseCmd.Flags().BoolVarP(&cli_plusbin, "plus-bin", "", false, "Add a .bin file version of output")
 }
 
 // ----------------------- Anonymise function below this line -----------------------
@@ -67,9 +67,9 @@ func init() {
 // sm ano input.ssf anon.ssf --format 5					# because it wouldn't be anonymised
 
 func ano(args []string) {
-	var fnr string      // filename for reading
-	var fnw string      // where to write to (filename to open)
-	var w *bufio.Writer // buffer writer
+	var fnr string // filename for reading
+	var fnw string // where to write to (filename to open)
+	// var w *bufio.Writer // buffer writer
 
 	// process CLI
 	num, files, found := getSSFs(args)
@@ -174,35 +174,33 @@ func ano(args []string) {
 	var ordered []string
 	ordered = slices.Sorted(maps.Keys(shaMap))
 
-	// Write out
-	conditionalMessage(cli_verbose, fmt.Sprintf("Writing %d anonymised records", len(shaMap)))
-	w = writeInit(fnw)
+	// Writing
+	conditionalMessage(cli_verbose, fmt.Sprintf("Writing %s anonymised SSF records", intAsStringWithCommas(int64(len(shaMap)))))
+	writer := new(writeSSF)
+	writer.open(fnw)
+	// w = writeInit(fnw)
 	for _, key := range ordered {
-		fmt.Fprintln(w, key+shaMap[key])
+		writer.writeSHA(key + shaMap[key])
 	}
-	w.Flush()
+	writer.close()
 
 	// Write binary version
-	fnwb := fnw + ".bin"
-	fb, berr := os.Create(fnwb)
-	if berr != nil {
-		abort(4, "Cannot create binary file "+fnwb)
-	}
-	// var bin binsha
-	for _, key2 := range ordered {
-		fmt.Println("Saving ", key2)
-		fb.WriteString(key2)
-		fb.WriteString("\n")
-
-		// bin = shaBase64ToShaBinary(key2)
-
-		// fb.Write(bin)
-
-		// fb.Write([]byte(bin))
-
-		// for i := 0; i < 32; i++ {
-		// 	fb.Write(bin[i])
-		// }
+	if cli_plusbin {
+		if fnw == "" {
+			abort(1, "Unable to create binary as no output file specified")
+		}
+		fnwb := fnw + ".bin"
+		fb, berr := os.Create(fnwb)
+		if berr != nil {
+			abort(1, "Cannot create binary file "+fnwb)
+		}
+		conditionalMessage(cli_verbose, fmt.Sprintf("Writing %s anonymised binary SHA256s to %s", intAsStringWithCommas(int64(len(shaMap))), fnwb))
+		var bin binsha
+		for _, key2 := range ordered {
+			bin = shaBase64ToShaBinary(key2)
+			fb.Write(bin[0:32])
+		}
+		fb.Close()
 	}
 
 	os.Exit(0) //explicit (because we're an rc=0 or rc=1 depending on whether any changes)

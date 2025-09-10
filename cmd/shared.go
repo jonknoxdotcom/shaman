@@ -61,6 +61,7 @@ var cli_ending string = "" // only consider files with this ending
 
 var cli_noempty = false // do not allow hash for empty file to appear
 var cli_chaff = 0       // chaff volume - approx number of records to add (default: 0 = off)
+var cli_plusbin = false // add a .bin version of file
 
 // ----------------------- General
 

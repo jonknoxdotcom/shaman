@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// readSSF functions
+// ReadSSF functions
 // Will read and unpack lines from a 'SHA Signature File' formatted file
 
 type readSSF struct {

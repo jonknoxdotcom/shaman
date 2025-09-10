@@ -37,7 +37,10 @@ sample/*
 shaman
 poc/
 test-data/
+stars/
 *.ssf
 _debug*
 code.sha256
-
+*.bin
+lps.txt
+empty

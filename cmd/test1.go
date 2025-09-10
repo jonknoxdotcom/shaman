@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -18,7 +19,7 @@ var testCmd = &cobra.Command{
 	Short: "This is used to test different file-system and SSF access interfaces",
 	Long: `This is used to test different file-system and SSF access interfaces.
 Not intended for functional use.`,
-	Aliases: []string{"test", "tes"},
+	Aliases: []string{"test", "t1"},
 	Run: func(cmd *cobra.Command, args []string) {
 		tes(args)
 	},
@@ -37,6 +38,8 @@ func init() {
 
 func tes(args []string) {
 	var fnr string // filename for reading
+
+	fmt.Println("number of cpus is", runtime.NumCPU())
 
 	// process CLI
 	num, files, found := getSSFs(args)
