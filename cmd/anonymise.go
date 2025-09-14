@@ -122,13 +122,9 @@ func ano(args []string) {
 		// infrequent - allow a small number of misformed lines before giving up
 		if err != nil {
 			errorTolerance--
-			if errorTolerance >= 0 {
-				// temp addition of 's'
-				fmt.Printf("Error: ignoring line %d of %s - %s\n", lineno, fnr, err)
-				continue
-			} else {
-				abort(1, "Too many errors in "+fnr+" - giving up")
-			}
+			conditionalAbort(errorTolerance < 0, 1, "Too many errors in "+fnr+" - giving up")
+			fmt.Printf("Error: ignoring line %d of %s - %s\n", lineno, fnr, err)
+			continue
 		}
 
 		// infrequent - eof detect
@@ -142,11 +138,8 @@ func ano(args []string) {
 	slog.Debug("Anonymisation read", "file", fnr, "lines", lineno, "shas", len(shaMap), "elapsedus", int(timeTaken/1000000), "lps", lps)
 
 	// Is there anything to do?
-	if len(shaMap) == 0 {
-		abort(1, "Nothing found to anonymise")
-	} else {
-		conditionalMessage(cli_verbose, fmt.Sprintf("Found %d records", len(shaMap)))
-	}
+	conditionalAbort(len(shaMap) == 0, 1, "Nothing found to anonymise")
+	conditionalMessage(cli_verbose, fmt.Sprintf("Found %d records", len(shaMap)))
 
 	// Chaffing
 	if cli_chaff > 0 {
@@ -186,14 +179,11 @@ func ano(args []string) {
 
 	// Write binary version
 	if cli_plusbin {
-		if fnw == "" {
-			abort(1, "Unable to create binary as no output file specified")
-		}
+		conditionalAbort(fnw == "", 1, "Unable to create binary as no output file specified")
 		fnwb := fnw + ".bin"
 		fb, berr := os.Create(fnwb)
-		if berr != nil {
-			abort(1, "Cannot create binary file "+fnwb)
-		}
+		conditionalAbort(berr != nil, 1, "Cannot create binary file "+fnwb)
+
 		conditionalMessage(cli_verbose, fmt.Sprintf("Writing %s anonymised binary SHA256s to %s", intAsStringWithCommas(int64(len(shaMap))), fnwb))
 		var bin binsha
 		for _, key2 := range ordered {
