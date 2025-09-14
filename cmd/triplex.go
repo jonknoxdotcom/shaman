@@ -98,6 +98,16 @@ func walkTreeYieldDirectoriesToChannel(startpath string, c chan string, nodot bo
 // 	}()
 // }
 
+func getNextTriplexRaw(fileQueue chan triplex) (name string, modt int64, size int64) {
+	t, ok := <-fileQueue
+	///fmt.Println(t)
+	if !ok {
+		return "", 0, 0
+	} else {
+		return t.filename, t.modified, t.size
+	}
+}
+
 func getNextTriplex(fileQueue chan triplex) (fs_name string, fs_modt string, fs_size string) {
 	t, ok := <-fileQueue
 	///fmt.Println(t)

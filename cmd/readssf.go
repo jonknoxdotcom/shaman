@@ -33,7 +33,21 @@ func (reader *readSSF) open(fileName string) error {
 		return err
 	}
 	reader.file = f
-	reader.scanner = bufio.NewScanner(f)
+	return reader.reset()
+}
+
+// reset moves back to the beginning of the reader stream (to start from zero).
+// We do not close and re-open to re-pass because that is slower.
+func (reader *readSSF) reset() error {
+	if reader.file == nil {
+		// open command should have established a file
+		return fmt.Errorf("internal error - called reset with no opened file")
+	}
+	if reader.scanner != nil {
+		// close last reader - possible?
+	}
+	reader.file.Seek(0, 0)
+	reader.scanner = bufio.NewScanner(reader.file)
 	reader.trackingLine = 0
 	reader.format = FormatUndefined
 	return nil
