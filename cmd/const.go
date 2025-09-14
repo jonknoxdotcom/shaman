@@ -21,3 +21,6 @@ const (
 // The "empty hash"
 // const emptySHAhex string = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 const emptySHAb64 = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU"
+
+// Reader buffer size (for SSF files)
+const readerBufferSize int = 4096

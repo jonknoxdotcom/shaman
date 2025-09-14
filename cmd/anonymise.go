@@ -85,13 +85,13 @@ func ano(args []string) {
 		fmt.Println("Warning: output file '" + files[1] + "' will be overwritten")
 	}
 
-	// create scanner from fnr (fails if file cannot be opened, missing or has permissions errors)
+	// create readerner from fnr (fails if file cannot be opened, missing or has permissions errors)
 	fnr = files[0]
-	scan := new(readSSF)
-	if scan.open(fnr) != nil {
+	reader := new(readSSF)
+	if reader.open(fnr) != nil {
 		abort(4, "Internal error #4: ")
 	}
-	defer scan.close()
+	defer reader.close()
 
 	// create writer
 	if num == 2 {
@@ -110,7 +110,7 @@ func ano(args []string) {
 	timeStart := time.Now()
 	for true {
 		// perform minimal fetch, err for bad files, no err + empty sha means exhaustion
-		shab64, _, lineno, err = scan.nextSHA() // shab64, format, lineNumber, line, err
+		shab64, _, lineno, err = reader.nextSHA() // shab64, format, lineNumber, line, err
 
 		// golden path - store lines and go again
 		if shab64 != "" {

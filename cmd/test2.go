@@ -12,7 +12,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// anonymiseCmd represents the anonymise command
 var test2Cmd = &cobra.Command{
 	Use:   "test2",
 	Short: "This is used to test different file-system and SSF access interfaces",
