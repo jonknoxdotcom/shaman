@@ -57,7 +57,7 @@ func tes(args []string) {
 	// create scanner from fnr (fails if file cannot be opened, missing or has permissions errors)
 	fnr = files[0]
 	scan := new(readSSF)
-	if scan.open(fnr) != nil {
+	if scan.open(fnr, false) != nil {
 		abort(4, "Internal error #4: ")
 	}
 	defer scan.close()

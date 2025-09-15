@@ -85,10 +85,11 @@ func ano(args []string) {
 		fmt.Println("Warning: output file '" + files[1] + "' will be overwritten")
 	}
 
-	// create readerner from fnr (fails if file cannot be opened, missing or has permissions errors)
+	// create reader from fnr (fails if file cannot be opened, missing or has permissions errors)
+	// NB ignore nodot filtering - full passthrough
 	fnr = files[0]
 	reader := new(readSSF)
-	if reader.open(fnr) != nil {
+	if reader.open(fnr, false) != nil {
 		abort(4, "Internal error #4: ")
 	}
 	defer reader.close()
@@ -115,7 +116,7 @@ func ano(args []string) {
 		// golden path - store lines and go again
 		if shab64 != "" {
 			// store presence (or more) here
-			shaMap[shab64] = ""
+			shaMap[shab64] = "" // only format 1 for the time being
 			continue
 		}
 
@@ -167,7 +168,7 @@ func ano(args []string) {
 	var ordered []string
 	ordered = slices.Sorted(maps.Keys(shaMap))
 
-	// Writing
+	// Writing anon SHA (format 1/2/)
 	conditionalMessage(cli_verbose, fmt.Sprintf("Writing %s anonymised SSF records", intAsStringWithCommas(int64(len(shaMap)))))
 	writer := new(writeSSF)
 	writer.open(fnw)
@@ -193,5 +194,5 @@ func ano(args []string) {
 		fb.Close()
 	}
 
-	os.Exit(0) //explicit (because we're an rc=0 or rc=1 depending on whether any changes)
+	os.Exit(0)
 }

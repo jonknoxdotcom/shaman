@@ -12,11 +12,18 @@ import (
 )
 
 // ReadSSF functions
-// Will read and unpack lines from a 'SHA Signature File' formatted file
+// Will read and unpack lines from a 'SHA Signature Format' file
+//  -  open(fileName string) error
+//  -  reset() error
+//  -  close()
+//  -  nextSHA() (shab64 string, format int, lineNumber int64, err error)
+//  -  allFields() (shab64 string, format int, modtime string, length string, name string, annotations []string, err error)
+//  -  allValues() (sha binsha, format int, modtime int64, length int64, name string, annotations []string)
 
 type readSSF struct {
 	reader        *bufio.Reader // Buffered IO reader
 	file          *os.File      // Handle to open file being processed
+	nodot         bool          // no dot memory
 	trackingLine  int64         // Line number of last read line
 	shaBase64     string        // SHA of last valid line
 	buffer        string        // Copy of last valid line
@@ -28,12 +35,13 @@ type readSSF struct {
 
 // open() is used to establish the read channel for the SSF file if viable.
 // An error is returned if the file is not found or it is inaccessible due to permission problems
-func (r *readSSF) open(fileName string) error {
+func (r *readSSF) open(fileName string, nodot bool) error {
 	f, err := os.Open(fileName)
 	if err != nil {
 		return err
 	}
 	r.file = f
+	r.nodot = nodot
 	return r.reset()
 }
 

@@ -4,12 +4,9 @@ Copyright © 2025 Jon Knox <jon@k2x.io>
 package cmd
 
 import (
-	"bufio"
-	"errors"
 	"fmt"
-	"io"
-	"io/fs"
 	"os"
+	"strconv"
 )
 
 // Processor functions
@@ -32,66 +29,55 @@ import (
 // NB: almost everything returns a record count and size (fn,fs)
 
 type processSSF struct {
-	streamOrigin  string
-	streamChannel chan triplex
-	fileNameRead  string
-	fileRead      *os.File
-	nodotRead     bool
+	reader *readSSF // reader object
+	fNoDot bool     // file no-dot dropper
+	fLine  int64    // file line counter
+	fName  string   // stored filename
 
-	lineRead      int
-	fileNameWrite string
-	fileWrite     *os.File
-	lineWrite     int
-
-	scanner      *bufio.Scanner // Buffered IO reader
-	trackingLine int64          // Line number of last read line
-
+	pName     string // pathname
 	fileQueue chan triplex
 }
 
 // open(fn) - open an SSF file (all the checks that it exists as well), handle to fileRead
-func (process *processSSF) open(fileName string, nodot bool) error {
-	f, err := os.Open(fileName)
-	if err != nil {
-		return err
-	}
-	process.fileRead = f
-	process.fileNameRead = fileName
-	process.lineRead = 0
-	process.nodotRead = nodot
-	return nil
+func (p *processSSF) fread(fileName string, nodot bool) error {
+	p.reader = new(readSSF)
+	p.fNoDot = nodot
+	p.fLine = 0
+	p.fName = fileName
+
+	return p.reader.open(fileName, nodot)
 }
 
 // close() - closes all open files (read or write)
-func (process *processSSF) close() error {
-	// if process.fileNameRead != "" {
-	// 	close(process.fileRead)
+func (p *processSSF) close() {
+	if p.fName != "" {
+		p.reader.close()
+	}
+	// if p.fileNameWrite != "" {
+	// 	close(p.fileWrite)
 	// }
-	// if process.fileNameWrite != "" {
-	// 	close(process.fileWrite)
-	// }
-	return nil
 }
 
 // TEMP
-func pathExists(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if errors.Is(err, fs.ErrNotExist) {
-		return false, nil
-	}
-	return false, err
-}
+// func pathExists(path string) (bool, error) {
+// 	_, err := os.Stat(path)
+// 	if err == nil {
+// 		return true, nil
+// 	}
+// 	if errors.Is(err, fs.ErrNotExist) {
+// 		return false, nil
+// 	}
+// 	return false, err
+// }
 
 // path(pn) - open a path (underlying this will be a triplex channel) / just checks it exists
-func (process *processSSF) path(pathName string, nodot bool) error {
+func (p *processSSF) path(pathName string, nodot bool) error {
 
 	// sort out a pathname to walk (don't expect blank)
 	if pathName == "" {
 		pathName = "."
 	}
+	p.pName = pathName
 	_, err := os.Stat(pathName)
 	if err != nil {
 		// almost certainly will be an "errors.Is(err, fs.ErrNotExist)"
@@ -99,43 +85,81 @@ func (process *processSSF) path(pathName string, nodot bool) error {
 	}
 
 	// parallel tree walker - producer
-	process.fileQueue = make(chan triplex, 4096)
+	p.fileQueue = make(chan triplex, 4096)
 	go func() {
-		defer close(process.fileQueue)
-		walkTreeYieldFilesToChannel(pathName, process.fileQueue, nodot)
+		defer close(p.fileQueue)
+		walkTreeYieldFilesToChannel(pathName, p.fileQueue, nodot)
 	}()
 
 	return nil
 }
 
 // mapper(fn,type) - returns go map with key=hash, type=meta|none
-func (process *processSSF) mapper(pathName string) error {
+func (p *processSSF) mapper(pathName string) error {
 	return nil
 }
 
 // fsize() - return size info on file (as lone operation)
-func (process *processSSF) fsize() (int64, int64, error) {
+// The file must have been already opened with open().
+func (p *processSSF) fsize() (int64, int64, error) {
 	// ensure at start of file
-	process.fileRead.Seek(0, io.SeekStart)
+	p.reader.reset()
 
-	// scan := new(readSSF)
-	// if scan.open(process.fileRead) != nil {
-	// 	abort(4, "internal error unable to start seeking on file read handle")
-	// }
-	// defer scan.close()
+	var fTotalLines int64
+	var fTotalBytes int64
 
-	return 0, 0, nil
+	var shab64 string
+	var err error // error object
+	var errorTolerance int = 5
+	var lineno int64 // needed for error reporting on .ssf file corruptions
+	var format int
+	var length string
+
+	for true {
+		// perform minimal fetch, err for bad files, no err + empty sha means exhaustion
+		shab64, format, lineno, err = p.reader.nextSHA() // shab64, format, lineNumber, line, err
+		p.fLine++
+
+		// golden path - store lines and go again
+		if shab64 != "" {
+			// add to counts
+			fTotalLines++
+
+			if format >= 3 {
+				// add bytes
+				_, _, _, length, _, _, err = p.reader.allFields()
+				nbytes, _ := strconv.ParseInt(length, 16, 0)
+				fTotalBytes += nbytes
+			}
+			continue
+		}
+
+		// infrequent - allow a small number of misformed lines before giving up
+		if err != nil {
+			errorTolerance--
+			conditionalAbort(errorTolerance < 0, 1, "Too many errors in "+p.fName+" - giving up")
+			fmt.Printf("Error: ignoring line %d of %s - %s\n", lineno, p.fName, err)
+			continue
+		}
+
+		// infrequent - eof detect
+		if shab64 == "" {
+			break
+		}
+	}
+
+	return fTotalLines, fTotalBytes, nil
 }
 
 // psize() - return size info on path (as lone operation)
-func (process *processSSF) psize() (int64, int64, error) {
+func (p *processSSF) psize() (int64, int64, error) {
 	var tf int64 // total number of files
 	var ts int64 // total size in bytes
-	if process.fileQueue == nil {
+	if p.fileQueue == nil {
 		return 0, 0, fmt.Errorf("Internal error - queue not configured")
 	}
 	for true {
-		fileName, _, fileLength := getNextTriplexRaw(process.fileQueue)
+		fileName, _, fileLength := getNextTriplexRaw(p.fileQueue)
 		tf++
 		ts += fileLength
 		if fileName == "" {
@@ -150,6 +174,6 @@ type compGetter func(fn string, size int64) string
 type compWriter func(form int, tag string, modt string, size string, name string) error
 
 // compare(*g,*w) - compare file vs path, using callbacks get and write
-func (process *processSSF) compare(fngetSHA compGetter, fnWriteRecord compWriter, shallow bool) (int64, int64, int64, int64, error) {
+func (p *processSSF) compare(fngetSHA compGetter, fnWriteRecord compWriter, shallow bool) (int64, int64, int64, int64, error) {
 	return 0, 0, 0, 0, nil
 }

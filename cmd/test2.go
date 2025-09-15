@@ -58,26 +58,32 @@ func t2(args []string) {
 	}
 
 	// STAGE 1 - do path pre-scan
-	fmt.Println("\nSTAGE 1")
+	fmt.Println("\nSTAGE 1 - PATH")
 	proc := new(processSSF)
 	err1 := proc.path(cli_path, cli_nodot)
 	if err1 != nil {
 		abort(1, fmt.Sprintf("Path %s not found", cli_path))
 	}
-	tf, ts, err2 := proc.psize()
+	ptf, pts, err2 := proc.psize()
 	if err2 != nil {
 		abort(1, fmt.Sprintf("Cannot read path %s", cli_path))
 	}
-	fmt.Printf("Found %d files, total of %d bytes\n", tf, ts)
+	fmt.Printf("Detected:  %10s files %20s bytes\n", intAsStringWithCommas(ptf), intAsStringWithCommas(pts))
 
 	// STAGE 2 - do file pre-scan twice (using reset())
 	// create scanner from fnr (fails if file cannot be opened, missing or has permissions errors)
-	fmt.Println("\nSTAGE 2")
+	fmt.Println("\nSTAGE 2 - FILE")
 	fnr = files[0]
-	err3 := proc.open(fnr, cli_nodot)
+	err3 := proc.fread(fnr, cli_nodot)
 	if err3 != nil {
 		abort(1, fmt.Sprintf("File %s not found", fnr))
 	}
+	ftf, fts, err4 := proc.fsize()
+	if err4 != nil {
+		abort(1, fmt.Sprintf("Error reading file %s", fnr))
+	}
+	fmt.Printf("Files:     %10s files %20s bytes\n", intAsStringWithCommas(ftf), intAsStringWithCommas(fts))
 
-	os.Exit(0) //explicit (because we're an rc=0 or rc=1 depending on whether any changes)
+	proc.close()
+	os.Exit(0)
 }
