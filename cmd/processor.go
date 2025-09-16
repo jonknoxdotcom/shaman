@@ -101,11 +101,13 @@ func (p *processSSF) mapper(pathName string) error {
 
 // fsize() - return size info on file (as lone operation)
 // The file must have been already opened with open().
-func (p *processSSF) fsize() (int64, int64, error) {
+func (p *processSSF) fsize() (int64, int64, int64, error) {
 	// ensure at start of file
 	p.reader.reset()
 
-	var fTotalLines int64
+	// this is the return order
+	var fTotalFiles int64
+	var fTotalDropped int64
 	var fTotalBytes int64
 
 	var shab64 string
@@ -123,13 +125,15 @@ func (p *processSSF) fsize() (int64, int64, error) {
 		// golden path - store lines and go again
 		if shab64 != "" {
 			// add to counts
-			fTotalLines++
+			fTotalFiles++
 
 			if format >= 3 {
 				// add bytes
 				_, _, _, length, _, _, err = p.reader.allFields()
 				nbytes, _ := strconv.ParseInt(length, 16, 0)
 				fTotalBytes += nbytes
+			} else {
+				fTotalDropped++
 			}
 			continue
 		}
@@ -137,7 +141,9 @@ func (p *processSSF) fsize() (int64, int64, error) {
 		// infrequent - allow a small number of misformed lines before giving up
 		if err != nil {
 			errorTolerance--
-			conditionalAbort(errorTolerance < 0, 1, "Too many errors in "+p.fName+" - giving up")
+			if errorTolerance < 0 {
+				return 0, 0, 0, fmt.Errorf("Too many errors reading %s - giving up", p.fName)
+			}
 			fmt.Printf("Error: ignoring line %d of %s - %s\n", lineno, p.fName, err)
 			continue
 		}
@@ -148,7 +154,7 @@ func (p *processSSF) fsize() (int64, int64, error) {
 		}
 	}
 
-	return fTotalLines, fTotalBytes, nil
+	return fTotalFiles, fTotalDropped, fTotalBytes, nil
 }
 
 // psize() - return size info on path (as lone operation)

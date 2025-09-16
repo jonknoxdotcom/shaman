@@ -52,9 +52,7 @@ func (r *readSSF) reset() error {
 		// open command should have established a file
 		return fmt.Errorf("internal error - called reset with no opened file")
 	}
-	// if r.reader != nil {
-	// 	// close last reader - possible?
-	// }
+
 	r.file.Seek(0, 0)
 	r.reader = bufio.NewReaderSize(r.file, readerBufferSize)
 	r.trackingLine = 0

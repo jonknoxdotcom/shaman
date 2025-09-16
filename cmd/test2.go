@@ -78,11 +78,15 @@ func t2(args []string) {
 	if err3 != nil {
 		abort(1, fmt.Sprintf("File %s not found", fnr))
 	}
-	ftf, fts, err4 := proc.fsize()
+	ftf, ftd, fts, err4 := proc.fsize()
 	if err4 != nil {
 		abort(1, fmt.Sprintf("Error reading file %s", fnr))
 	}
-	fmt.Printf("Files:     %10s files %20s bytes\n", intAsStringWithCommas(ftf), intAsStringWithCommas(fts))
+	fmt.Printf("Files:     %10s files %20s bytes", intAsStringWithCommas(ftf), intAsStringWithCommas(fts))
+	if ftd > 0 {
+		fmt.Printf("    (%s dropped)\n", intAsStringWithCommas(ftd))
+	}
+	fmt.Printf("\n")
 
 	proc.close()
 	os.Exit(0)
