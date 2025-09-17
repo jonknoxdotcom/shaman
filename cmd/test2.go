@@ -101,21 +101,21 @@ func t2(args []string) {
 	// STAGE 3 - work out volume of work to do to compare path to file
 	// fmt.Println("\nSTAGE 3 - UPDATE ASSESSMENT")
 
-	// var filesToScan int64 // count of number of files that will need to be scanned
-	// var bytesToScan int64 // byte count of the files to be scanned
+	var filesToScan int64 // count of number of files that will need to be scanned
+	var bytesToScan int64 // byte count of the files to be scanned
 
-	// localScanAdder compGetter = func(fn string, size int64) string {
-	// 	filesToScan++
-	// 	bytesToScan += size
-	// 	return "DUMMY"
-	// }
+	localScanAdder compGetter = func(fn string, size int64) string {
+		filesToScan++
+		bytesToScan += size
+		return "DUMMY"
+	}
 
-	// dummyWriter compWriter = func(form int, tag string, modt string, size string, name string) error {
-	// 	// empty - no action on writing file
-	// 	return nil
-	// }
+	dummyWriter compWriter = func(form int, tag string, modt string, size string, name string) error {
+		// empty - no action on writing file
+		return nil
+	}
 
-	// fn,fs,fn,fs,err5 := p.compare(localScanAdder, dummyWriter, false)
+	fn,fs,fn,fs,err5 := p.compare(localScanAdder, dummyWriter, false)
 
 	// FINAL - close down and clean up
 	proc.close()
