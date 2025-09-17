@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"runtime"
+	"strconv"
 
 	"github.com/spf13/cobra"
 )
@@ -99,23 +100,43 @@ func t2(args []string) {
 	fmt.Printf("\n")
 
 	// STAGE 3 - work out volume of work to do to compare path to file
-	// fmt.Println("\nSTAGE 3 - UPDATE ASSESSMENT")
+	fmt.Println("\nSTAGE 3a - UPDATE ASSESSMENT")
+
+	var fn, fs, fnx, fsx int64
+	var errc error
 
 	var filesToScan int64 // count of number of files that will need to be scanned
 	var bytesToScan int64 // byte count of the files to be scanned
 
-	localScanAdder compGetter = func(fn string, size int64) string {
+	var localScanAdder compGetter = func(fn string, size int64) string {
 		filesToScan++
 		bytesToScan += size
 		return "DUMMY"
 	}
 
-	dummyWriter compWriter = func(form int, tag string, modt string, size string, name string) error {
+	var dummyWriter compWriter = func(form int, tag string, modt string, size string, name string) error {
 		// empty - no action on writing file
 		return nil
 	}
 
-	fn,fs,fnx,fsx,err5 := p.compare(localScanAdder, dummyWriter, false)
+	fn, fs, fnx, fsx, errc = proc.compare(localScanAdder, dummyWriter, false)
+	fmt.Println(fn, fs, fnx, fsx, errc)
+
+	// STAGE 3b - do actual compare
+	fmt.Println("\nSTAGE 3b - UPDATE")
+
+	var localGetSHA compGetter = func(fn string, size int64) string {
+		fmt.Println("Scanning " + fn + " (" + strconv.Itoa(int(size)) + ")")
+		return "DUMMY"
+	}
+
+	var dummyWriter2 compWriter = func(form int, tag string, modt string, size string, name string) error {
+		// empty - no action on writing file
+		return nil
+	}
+
+	fn, fs, fnx, fsx, errc = proc.compare(localGetSHA, dummyWriter2, false)
+	fmt.Println(fn, fs, fnx, fsx, errc)
 
 	// FINAL - close down and clean up
 	proc.close()

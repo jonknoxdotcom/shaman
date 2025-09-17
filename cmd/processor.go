@@ -171,11 +171,12 @@ func (p *processSSF) psize() (int64, int64, error) {
 	}
 	for true {
 		fileName, _, fileLength := getNextTriplexRaw(p.fileQueue)
-		tf++
-		ts += fileLength
 		if fileName == "" {
 			return tf, ts, nil
 		}
+
+		tf++
+		ts += fileLength
 	}
 	return 0, 0, nil // dummy
 }
@@ -198,11 +199,13 @@ func (p *processSSF) compare(fngetSHA compGetter, fnWriteRecord compWriter, shal
 	}
 	for true {
 		fileName, _, fileLength := getNextTriplexRaw(p.fileQueue)
-		tf++
-		ts += fileLength
 		if fileName == "" {
 			return tf, ts, 0, 0, nil
 		}
+
+		tf++
+		ts += fileLength
+		_ = fngetSHA(fileName, fileLength)
 	}
 
 	return 0, 0, 0, 0, nil // dummy
