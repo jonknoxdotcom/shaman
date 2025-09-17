@@ -23,19 +23,19 @@ import (
 // e             = open(fn) - open an SSF file (underlying, this will be a file open) / opens, read to read records
 // e             = path(pn) - open a path (underlying this will be a triplex channel) / just checks it exists
 // m,fn,fs,e     = mapper(fn,type) - returns go map with key=hash, type=meta|none
-// fn,fs,e       = fsize() - return size info on file (as lone operation)
+// fn,fd,fs,e    = fsize() - return size info on file (as lone operation) - size excludes any anon 'dropped' records
 // fn,fs,e       = psize() - return size info on path (as lone operation)
 // fn,fs,fn,fs,e = compare(*g,*w) - compare file vs path, using callbacks get and write (shallow then deep)
 // NB: almost everything returns a record count and size (fn,fs)
 
 type processSSF struct {
 	reader *readSSF // reader object
-	fNoDot bool     // file no-dot dropper
-	fLine  int64    // file line counter
+	fNoDot bool     // file no-dot dropper - whether to exclude files/paths beginning '.'
+	fLine  int64    // file line counter - line in file as opposed to record count
 	fName  string   // stored filename
 
-	pName     string // pathname
-	fileQueue chan triplex
+	pName     string       // pathname to where start tree-walk
+	fileQueue chan triplex // generated queue of files to process
 }
 
 // open(fn) - open an SSF file (all the checks that it exists as well), handle to fileRead
@@ -179,7 +179,8 @@ func (p *processSSF) psize() (int64, int64, error) {
 type compGetter func(fn string, size int64) string
 type compWriter func(form int, tag string, modt string, size string, name string) error
 
-// compare(*g,*w) - compare file vs path, using callbacks get and write
+// compare(*g,*w, shallow) - compare file vs path, using callbacks get and write
+// Returns the
 func (p *processSSF) compare(fngetSHA compGetter, fnWriteRecord compWriter, shallow bool) (int64, int64, int64, int64, error) {
 	return 0, 0, 0, 0, nil
 }

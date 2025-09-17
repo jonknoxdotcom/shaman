@@ -70,9 +70,9 @@ func t2(args []string) {
 	}
 	fmt.Printf("Detected:  %10s files %20s bytes\n", intAsStringWithCommas(ptf), intAsStringWithCommas(pts))
 
-	// STAGE 2 - do file pre-scan twice (using reset())
+	// STAGE 2 - do file pre-scan twice (making sure fsize's use of reset() works)
 	// create scanner from fnr (fails if file cannot be opened, missing or has permissions errors)
-	fmt.Println("\nSTAGE 2 - FILE")
+	fmt.Println("\nSTAGE 2 - FILE x2")
 	fnr = files[0]
 	err3 := proc.fread(fnr, cli_nodot)
 	if err3 != nil {
@@ -84,10 +84,40 @@ func t2(args []string) {
 	}
 	fmt.Printf("Files:     %10s files %20s bytes", intAsStringWithCommas(ftf), intAsStringWithCommas(fts))
 	if ftd > 0 {
-		fmt.Printf("    (%s dropped)\n", intAsStringWithCommas(ftd))
+		fmt.Printf("    (%s dropped)", intAsStringWithCommas(ftd))
 	}
 	fmt.Printf("\n")
 
+	ftf, ftd, fts, err4 = proc.fsize()
+	if err4 != nil {
+		abort(1, fmt.Sprintf("Error reading file %s", fnr))
+	}
+	fmt.Printf("Files:     %10s files %20s bytes", intAsStringWithCommas(ftf), intAsStringWithCommas(fts))
+	if ftd > 0 {
+		fmt.Printf("    (%s dropped)", intAsStringWithCommas(ftd))
+	}
+	fmt.Printf("\n")
+
+	// STAGE 3 - work out volume of work to do to compare path to file
+	// fmt.Println("\nSTAGE 3 - UPDATE ASSESSMENT")
+
+	// var filesToScan int64 // count of number of files that will need to be scanned
+	// var bytesToScan int64 // byte count of the files to be scanned
+
+	// localScanAdder compGetter = func(fn string, size int64) string {
+	// 	filesToScan++
+	// 	bytesToScan += size
+	// 	return "DUMMY"
+	// }
+
+	// dummyWriter compWriter = func(form int, tag string, modt string, size string, name string) error {
+	// 	// empty - no action on writing file
+	// 	return nil
+	// }
+
+	// fn,fs,fn,fs,err5 := p.compare(localScanAdder, dummyWriter, false)
+
+	// FINAL - close down and clean up
 	proc.close()
 	os.Exit(0)
 }
