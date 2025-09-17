@@ -115,7 +115,7 @@ func t2(args []string) {
 		return nil
 	}
 
-	fn,fs,fn,fs,err5 := p.compare(localScanAdder, dummyWriter, false)
+	fn,fs,fnx,fsx,err5 := p.compare(localScanAdder, dummyWriter, false)
 
 	// FINAL - close down and clean up
 	proc.close()

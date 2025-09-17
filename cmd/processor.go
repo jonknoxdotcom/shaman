@@ -85,12 +85,17 @@ func (p *processSSF) path(pathName string, nodot bool) error {
 	}
 
 	// parallel tree walker - producer
+	return p.preset(nodot)
+}
+
+// preset() generates a walking list for the path
+func (p *processSSF) preset(nodot bool) error {
+	// parallel tree walker - producer
 	p.fileQueue = make(chan triplex, 4096)
 	go func() {
 		defer close(p.fileQueue)
-		walkTreeYieldFilesToChannel(pathName, p.fileQueue, nodot)
+		walkTreeYieldFilesToChannel(p.pName, p.fileQueue, nodot)
 	}()
-
 	return nil
 }
 
@@ -180,7 +185,25 @@ type compGetter func(fn string, size int64) string
 type compWriter func(form int, tag string, modt string, size string, name string) error
 
 // compare(*g,*w, shallow) - compare file vs path, using callbacks get and write
-// Returns the
 func (p *processSSF) compare(fngetSHA compGetter, fnWriteRecord compWriter, shallow bool) (int64, int64, int64, int64, error) {
-	return 0, 0, 0, 0, nil
+
+	// this is a dummy to test function control
+	var tf int64 // total number of files
+	var ts int64 // total size in bytes
+
+	p.preset(false)
+
+	if p.fileQueue == nil {
+		return 0, 0, 0, 0, fmt.Errorf("Internal error - queue not configured")
+	}
+	for true {
+		fileName, _, fileLength := getNextTriplexRaw(p.fileQueue)
+		tf++
+		ts += fileLength
+		if fileName == "" {
+			return tf, ts, 0, 0, nil
+		}
+	}
+
+	return 0, 0, 0, 0, nil // dummy
 }
