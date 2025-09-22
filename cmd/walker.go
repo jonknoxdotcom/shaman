@@ -20,6 +20,7 @@ type walkTree struct {
 	nBytes     int64        // bytes processed so far
 	nFilesAll  int64        // nFiles at end
 	nBytesAll  int64        // nBytes at end
+	pathRate   int64        // step speed (files per second)
 	fileQueue  chan triplex // parallel file queue
 }
 
@@ -68,22 +69,26 @@ func (w *walkTree) preset(nodot bool) error {
 }
 
 // psize() - return size info on path (as lone operation)
-func (w *walkTree) psize() (int64, int64, error) {
+func (w *walkTree) psize() (int64, int64, int64, error) {
 	var tf int64 // total number of files
 	var ts int64 // total size in bytes
+
 	if w.fileQueue == nil {
-		return 0, 0, fmt.Errorf("Internal error - queue not configured")
+		return 0, 0, 0, fmt.Errorf("Internal error - queue not configured")
 	}
+	pstart := time.Now().UnixMilli()
+
 	for true {
 		fileName, _, fileLength := getNextTriplexRaw(w.fileQueue)
 		if fileName == "" {
 			w.nFilesAll = tf
 			w.nBytesAll = ts
-			return tf, ts, nil
+			w.pathRate = int64(1000 * float32(tf) / float32(time.Now().UnixMilli()-pstart))
+			return tf, ts, w.pathRate, nil
 		}
 
 		tf++
 		ts += fileLength
 	}
-	return 0, 0, nil // dummy
+	return 0, 0, 0, nil // dummy
 }

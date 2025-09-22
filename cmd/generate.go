@@ -51,10 +51,11 @@ func init() {
 
 func genForecasttoStdErr(wt *walkTree, prefix string) (int64, int64) {
 	fmt.Print(prefix)
-	tempf, tempb, _ := wt.psize()
-	fmt.Printf("%s files / %s bytes\n",
+	tempf, tempb, tempr, _ := wt.psize()
+	fmt.Printf("%s files / %s bytes (at %s fps)\n",
 		intAsStringWithCommas(tempf),
-		intAsStringWithCommas(tempb))
+		intAsStringWithCommas(tempb),
+		intAsStringWithCommas(tempr))
 	return tempf, tempb
 }
 
