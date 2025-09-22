@@ -126,8 +126,9 @@ func t2(args []string) {
 	fmt.Println("\nSTAGE 3b - UPDATE")
 
 	var localGetSHA compGetter = func(fn string, size int64) string {
-		fmt.Println("Scanning " + fn + " (" + strconv.Itoa(int(size)) + ")")
-		return "DUMMY"
+		_, sha_b64, _ := getFileSha256(fn)
+		fmt.Println("localGetSHA: " + sha_b64 + " = " + fn + " (" + strconv.Itoa(int(size)) + ")")
+		return sha_b64
 	}
 
 	var dummyWriter2 compWriter = func(form int, tag string, modt string, size string, name string) error {

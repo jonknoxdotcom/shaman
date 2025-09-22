@@ -119,3 +119,5 @@ func getNextTriplex(fileQueue chan triplex) (fs_name string, fs_modt string, fs_
 			fmt.Sprintf("%04x", t.size) // overflows 4-8 digits
 	}
 }
+
+// ----------------------- Directory traversal walker (new)
